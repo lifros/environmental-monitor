@@ -46,12 +46,26 @@ Data is shown on a touch LCD and can be used for logging or automation.
 5. **Tools → Serial Monitor** at 115200 baud to see sensor output.
 6. Connect SCD41 and BME680 to the board I²C (SDA, SCL) and 3V3/GND. If sensors are not found, check I²C pins in `config.h` against the board schematic.
 
+## I2C addresses (verified with project scanner)
+
+| Address | Device |
+|---------|--------|
+| **0x63** | Onboard touch |
+| **0x6B** | Onboard IMU / touch |
+| **0x62** | SCD41 (external, expansion header) |
+| **0x77** | BME680 (external, expansion header) |
+
+With only the board connected: 2 devices (0x63, 0x6B). With SCD41 and BME680 on the expansion header: 4 devices. The onboard LCD is SPI, not I2C.
+
+**I2C scanner sketch**: open the `i2c_scanner` folder in Arduino IDE, upload, and open Serial Monitor at 115200. It scans SDA=18, SCL=19 and labels onboard addresses.
+
 ## Repository Structure
 
 - `README.md` — this file
 - `PINOUT.md` — board pinout
 - `environmental-monitor.ino` — main Arduino sketch
 - `config.h` — I²C pins and options
+- `i2c_scanner/` — I2C bus scanner sketch
 - `platformio.ini` — optional, for PlatformIO users
 - `src/`, `include/` — optional PlatformIO layout (sketch uses root `.ino` and `config.h`)
 

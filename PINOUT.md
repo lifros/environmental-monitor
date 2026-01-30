@@ -49,4 +49,9 @@ The SDA/SCL pins on the header are not labeled with GPIO numbers. You can find t
    - **SCL (header pos 5) = GPIO 19**
 
 2. **I²C scanner**  
-   If the schematic does not match your board revision, use an I²C scanner sketch: try common GPIO pairs (e.g. 18/19, 8/9, 6/7) with `Wire.begin(SDA_GPIO, SCL_GPIO)` and see which combination detects your SCD41 (0x62) and BME680 (0x76 or 0x77). The project’s `config.h` sets `I2C_SDA_GPIO` and `I2C_SCL_GPIO` accordingly.
+   If the schematic does not match your board revision, use the project’s I²C scanner sketch (`i2c_scanner/`). With SDA=18, SCL=19 the following addresses have been verified:
+   - **0x63** — onboard touch
+   - **0x6B** — onboard IMU / touch
+   - **0x62** — SCD41 (external)
+   - **0x77** — BME680 (external)
+   The project’s `config.h` sets `I2C_SDA_GPIO` and `I2C_SCL_GPIO` accordingly.
