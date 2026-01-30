@@ -101,17 +101,17 @@ inline AirQualityEstimate estimateAirQuality(const AirQualityInput& in) {
   if (total > 100) total = 100;
   out.score = (uint8_t)(total + 0.5f);
 
-  // Category and suggestion
-  if (out.score >= 80) {
+  // Category and suggestion (90+ = excellent, 70–89 = good, 50–69 = moderate, …)
+  if (out.score >= 90) {
     out.category = "Excellent";
     out.suggestion = "Air quality is good.";
-  } else if (out.score >= 60) {
+  } else if (out.score >= 70) {
     out.category = "Good";
     out.suggestion = "Minor improvement possible.";
-  } else if (out.score >= 40) {
+  } else if (out.score >= 50) {
     out.category = "Moderate";
     out.suggestion = "Ventilate or reduce sources.";
-  } else if (out.score >= 20) {
+  } else if (out.score >= 30) {
     out.category = "Poor";
     out.suggestion = "Ventilate the room.";
   } else {
