@@ -1,17 +1,24 @@
 /**
  * Environmental Monitor — ESP32-C6-Touch-LCD-1.47
  * Sensors: SCD41 (CO2, T, RH), BME680 (T, RH, pressure, VOC).
- * Upload with Arduino IDE. Reads sensors and prints to Serial.
- * SCD41: official Sensirion I2C SCD4x library (Library Manager: "Sensirion I2C SCD4x").
+ * Upload with Arduino IDE. Serial + integrated display.
+ * Libs: Sensirion I2C SCD4x, Adafruit BME680, GFX Library for Arduino.
  */
 
 #include <Wire.h>
 #include <SensirionI2cScd4x.h>
 #include <Adafruit_BME680.h>
+#include <Arduino_GFX_Library.h>
 #include "config.h"
 #include "air_quality.h"
 
 #define SCD41_I2C_ADDR 0x62
+#define GFX_BL LCD_BL_GPIO
+
+// Display: 172×320, ST7789-compatible (JD9853). Pins from config.h
+Arduino_DataBus* bus = new Arduino_ESP32SPI(LCD_DC_GPIO, LCD_CS_GPIO, LCD_SCK_GPIO, LCD_MOSI_GPIO);
+Arduino_GFX* gfx = new Arduino_ST7789(bus, LCD_RST_GPIO, 0 /* rotation */, true /* IPS */,
+    172, 320, 34, 0, 34, 0);
 
 SensirionI2cScd4x scd41;
 Adafruit_BME680 bme680;
@@ -42,6 +49,16 @@ void setup() {
     bme680.setIIRFilterSize(BME680_FILTER_SIZE_3);
     bme680.setGasHeater(320, 150);
   }
+
+  gfx->begin();
+  gfx->fillScreen(0x0000);  // BLACK
+  pinMode(GFX_BL, OUTPUT);
+  digitalWrite(GFX_BL, HIGH);
+  gfx->setTextColor(0xFFFF);  // WHITE
+  gfx->setTextSize(2);
+  gfx->setCursor(10, 10);
+  gfx->println(F("Environmental Monitor"));
+  gfx->println(F("Waiting for sensors..."));
 
   Serial.println(F("Setup done. Report only when new CO2 is ready (~5s)."));
 }
@@ -112,6 +129,20 @@ void loop() {
   Serial.print(gas_ohm); Serial.println(F(" Ω"));
   Serial.print(F("Air quality: ")); Serial.print(aq.score); Serial.print(F("/100 — "));
   Serial.print(aq.category); Serial.print(F("  |  ")); Serial.println(aq.suggestion);
+
+  // Update display
+  gfx->fillScreen(0x0000);   // BLACK
+  gfx->setTextColor(0xFFFF); // WHITE
+  gfx->setTextSize(2);
+  int y = 8;
+  gfx->setCursor(8, y); gfx->print(F("CO2: ")); gfx->print((uint16_t)co2_ppm); gfx->println(F(" ppm")); y += 22;
+  gfx->setCursor(8, y); gfx->print(F("T: ")); gfx->print(temp_c, 1); gfx->print(F(" C  RH: ")); gfx->print(rh_percent, 1); gfx->println(F("%")); y += 22;
+  gfx->setCursor(8, y); gfx->print(F("P: ")); gfx->print(pressure_hpa, 1); gfx->print(F(" hPa  Gas: ")); gfx->println(gas_ohm); y += 22;
+  gfx->setCursor(8, y); gfx->setTextColor(aq.score >= 70 ? 0x07E0 : (aq.score >= 50 ? 0xFFE0 : 0xF800));  // green / yellow / red
+  gfx->print(F("Air: ")); gfx->print(aq.score); gfx->print(F("/100 ")); gfx->println(aq.category); y += 24;
+  gfx->setTextColor(0xFFFF);  // WHITE
+  gfx->setTextSize(1);
+  gfx->setCursor(8, y); gfx->println(aq.suggestion);
 
   delay(10);
 }

@@ -34,6 +34,7 @@ Data is shown on a touch LCD and can be used for logging or automation.
 - **Libraries** (Sketch → Include Library → Manage Libraries):
   - **Sensirion I2C SCD4x** (official SCD41/SCD40 driver)
   - **Adafruit BME680** (installs Adafruit Unified Sensor and BusIO as dependencies)
+  - **GFX Library for Arduino** (moononournation — for integrated 172×320 display)
 - **Pinout**: See [PINOUT.md](PINOUT.md). I²C: SDA/SCL on right header; GPIOs in `config.h`.
 
 ### Build and upload (Arduino IDE)

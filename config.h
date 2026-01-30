@@ -16,4 +16,12 @@
 // SCD41 I²C address: 0x62
 // BME680 I²C address: 0x76 or 0x77
 
+// Display (172×320 SPI, from Waveshare schematic)
+#define LCD_DC_GPIO   15
+#define LCD_CS_GPIO   14
+#define LCD_SCK_GPIO  2
+#define LCD_MOSI_GPIO 3
+#define LCD_RST_GPIO  22
+#define LCD_BL_GPIO   23
+
 #endif // CONFIG_H
