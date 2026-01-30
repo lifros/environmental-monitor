@@ -1,5 +1,5 @@
 /**
- * I2C scanner for ESP32-C6-Touch-LCD-1.47 — onboard devices only.
+ * I2C scanner for ESP32-C6-Touch-LCD-1.47.
  * SDA=18, SCL=19 (expansion header). LCD is SPI, not I2C.
  */
 #include <Wire.h>
@@ -10,8 +10,8 @@
 void setup() {
   Serial.begin(115200);
   delay(1000);
-  Serial.println(F("I2C Scanner — ESP32-C6-Touch-LCD-1.47 (onboard only)"));
-  Serial.println(F("Onboard: 0x63 touch, 0x6B IMU/touch"));
+  Serial.println(F("I2C Scanner — ESP32-C6-Touch-LCD-1.47"));
+  Serial.println(F("Onboard: 0x63 touch, 0x6B IMU/touch. External: 0x62 SCD41, 0x77 BME680"));
   Serial.println();
 
 
@@ -46,8 +46,10 @@ void loop() {
 
 const __FlashStringHelper* label(uint8_t addr) {
   switch (addr) {
+    case 0x62: return F("SCD41 (external)");
     case 0x63: return F("onboard touch");
     case 0x6B: return F("onboard IMU / touch");
+    case 0x77: return F("BME680 (external)");
     default:   return F("—");
   }
 }
