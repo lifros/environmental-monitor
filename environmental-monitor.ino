@@ -20,13 +20,13 @@ void setup() {
   scd41.begin(Wire, 0x62);
   delay(200);
 
-  uint16_t serial0, serial1, serial2;
-  if (scd41.getSerialNumber(serial0, serial1, serial2) != 0) {
+  uint64_t serialNumber;
+  if (scd41.getSerialNumber(serialNumber) != 0) {
     Serial.println(F("SCD41: not found on I2C (addr 0x62). Check SDA=18, SCL=19, 3V3, GND and wiring."));
     for (;;) delay(1000);
   }
-  Serial.print(F("SCD41: found (serial ..."));
-  Serial.print(serial2, HEX);
+  Serial.print(F("SCD41: found (serial 0x"));
+  Serial.print(serialNumber, HEX);
   Serial.println(F(")."));
 
   scd41.stopPeriodicMeasurement();
