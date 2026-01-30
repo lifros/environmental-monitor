@@ -30,8 +30,24 @@ void setup() {
   Wire.begin(I2C_SDA_GPIO, I2C_SCL_GPIO);
   Wire.setClock(I2C_FREQ_HZ);
 
+  // BME680 first so it sees a clean I2C bus (SCD41 retries can leave bus in a bad state)
+  if (!bme680.begin()) {
+    Serial.println(F("BME680 not found. Check wiring and I2C address."));
+  } else {
+    Serial.println(F("BME680 OK"));
+    bme680.setTemperatureOversampling(BME680_OS_8X);
+    bme680.setHumidityOversampling(BME680_OS_2X);
+    bme680.setPressureOversampling(BME680_OS_4X);
+    bme680.setIIRFilterSize(BME680_FILTER_SIZE_3);
+    bme680.setGasHeater(320, 150);
+  }
+
+  delay(50);
+  Wire.begin(I2C_SDA_GPIO, I2C_SCL_GPIO);  // reset I2C bus before SCD41
+  Wire.setClock(I2C_FREQ_HZ);
+
   scd41.begin(Wire, SCD41_I2C_ADDR);
-  delay(100);  // SCD41 may need a moment after power-on before accepting commands
+  delay(100);
   int16_t err = -1;
   for (int i = 0; i < 3; i++) {
     err = scd41.startPeriodicMeasurement();
@@ -42,17 +58,6 @@ void setup() {
     Serial.println(F("SCD41 init retry — will use data when ready."));
   } else {
     Serial.println(F("SCD41 OK"));
-  }
-
-  if (!bme680.begin()) {
-    Serial.println(F("BME680 not found. Check wiring and I2C address."));
-  } else {
-    Serial.println(F("BME680 OK"));
-    bme680.setTemperatureOversampling(BME680_OS_8X);
-    bme680.setHumidityOversampling(BME680_OS_2X);
-    bme680.setPressureOversampling(BME680_OS_4X);
-    bme680.setIIRFilterSize(BME680_FILTER_SIZE_3);
-    bme680.setGasHeater(320, 150);
   }
 
   gfx.init(172, 320);
