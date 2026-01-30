@@ -16,6 +16,9 @@
 // SCD41 I²C address: 0x62
 // BME680 I²C address: 0x76 or 0x77
 
+// How often to check sensors and update report (ms). Home IAQ: 60 s is common (ESPHome, etc.).
+#define READ_INTERVAL_MS  60000
+
 // Display (172×320 SPI, from Waveshare schematic)
 #define LCD_DC_GPIO   15
 #define LCD_CS_GPIO   14
