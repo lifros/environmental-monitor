@@ -46,41 +46,26 @@ static void bme680IAQ(uint32_t gasOhm, int& iaq, const __FlashStringHelper*& lab
   else                 label = F("Severely polluted");
 }
 
-// Use library height after rotation. Draw from bottom so content reads correctly when viewed from behind.
+// Normal layout: title at top, then SCD41, then BME680 data
 static void drawScreen(uint16_t co2, float tScd, float rhScd, float tBme, float rhBme, float p, int iaq, const __FlashStringHelper* iaqLabel) {
   tft.fillScreen(ST77XX_BLACK);
   const int lineH = 10;
-  const int titleH = 16;
-  const int h = tft.height();
-  int n = (hasScd41 ? 2 : 0) + (hasBme680 ? 4 : 0);
-  int y = h - titleH - n * lineH;
-  if (y < 0) y = 0;
+  int y = 0;
+
+  tft.setTextColor(ST77XX_WHITE, ST77XX_BLACK);
+  tft.setTextSize(2);
+  tft.setCursor(0, y);
+  tft.println(F("Env Monitor"));
+  y += 18;
 
   tft.setTextSize(1);
-  if (hasBme680) {
-    tft.setTextColor(ST77XX_GREEN, ST77XX_BLACK);
-    tft.setCursor(0, y);
-    tft.print(F("IAQ: "));
-    tft.print(iaq);
-    tft.print(F(" ("));
-    tft.print(iaqLabel);
-    tft.println(F(")"));
-    y += lineH;
-    tft.setCursor(0, y);
-    tft.print(F("P: "));
-    tft.print(p, 0);
-    tft.println(F(" hPa"));
-    y += lineH;
-    tft.setCursor(0, y);
-    tft.print(F("BME T: "));
-    tft.print(tBme, 1);
-    tft.print(F(" C  RH: "));
-    tft.print(rhBme, 1);
-    tft.println(F(" %"));
-    y += lineH;
-  }
   if (hasScd41) {
     tft.setTextColor(ST77XX_CYAN, ST77XX_BLACK);
+    tft.setCursor(0, y);
+    tft.print(F("CO2: "));
+    tft.print(co2);
+    tft.println(F(" ppm"));
+    y += lineH;
     tft.setCursor(0, y);
     tft.print(F("T: "));
     tft.print(tScd, 1);
@@ -88,16 +73,28 @@ static void drawScreen(uint16_t co2, float tScd, float rhScd, float tBme, float 
     tft.print(rhScd, 1);
     tft.println(F(" %"));
     y += lineH;
-    tft.setCursor(0, y);
-    tft.print(F("CO2: "));
-    tft.print(co2);
-    tft.println(F(" ppm"));
-    y += lineH;
   }
-  tft.setTextColor(ST77XX_WHITE, ST77XX_BLACK);
-  tft.setTextSize(2);
-  tft.setCursor(0, y);
-  tft.println(F("Env Monitor"));
+  if (hasBme680) {
+    tft.setTextColor(ST77XX_GREEN, ST77XX_BLACK);
+    tft.setCursor(0, y);
+    tft.print(F("BME T: "));
+    tft.print(tBme, 1);
+    tft.print(F(" C  RH: "));
+    tft.print(rhBme, 1);
+    tft.println(F(" %"));
+    y += lineH;
+    tft.setCursor(0, y);
+    tft.print(F("P: "));
+    tft.print(p, 0);
+    tft.println(F(" hPa"));
+    y += lineH;
+    tft.setCursor(0, y);
+    tft.print(F("IAQ: "));
+    tft.print(iaq);
+    tft.print(F(" ("));
+    tft.print(iaqLabel);
+    tft.println(F(")"));
+  }
 }
 
 void setup() {
@@ -111,7 +108,9 @@ void setup() {
   digitalWrite(TFT_BL, HIGH);
 
   tft.init(TFT_W, TFT_H);
+  // Rotation 3: correct orientation; if image looks mirrored, try MADCTL horizontal flip (MH bit).
   tft.setRotation(3);
+  tft.invertDisplay(false);
   tft.fillScreen(ST77XX_BLACK);
   tft.setTextColor(ST77XX_WHITE, ST77XX_BLACK);
   tft.setTextSize(2);

@@ -1,36 +1,77 @@
-# ESP32-C6-Touch-LCD-1.47 — Pinout
+# ESP32-C6 1.47inch Touch Display Development Board
+- 172×320 Resolution
+- 262K Display Color
+- Supports Wi-Fi 6 / BLE 5
+- 160MHz RISC-V Processor
 
-## Right side (from top)
+Ref: https://www.waveshare.com/esp32-c6-touch-lcd-1.47.htm?sku=31201
+Wiki: https://www.waveshare.com/wiki/ESP32-C6-Touch-LCD-1.47
 
-| # | Label | Function        |
-|---|-------|-----------------|
-| 1 | VBAT  | Battery voltage |
-| 2 | GND   | Ground          |
-| 3 | GND   | Ground          |
-| 4 | 3V3   | 3.3 V supply    |
-| 5 | SCL   | I²C clock       |
-| 6 | SDA   | I²C data        |
-| 7 | 13    | GPIO 13         |
-| 8 | 12    | GPIO 12         |
-| 9 | 9     | GPIO 9          |
-|10 | 8     | GPIO 8          |
-|11 | 7     | GPIO 7          |
+# Features
+ESP32-C6-Touch-LCD-1.47 uses ESP32-C6FH8 chip with 2.4GHz WiFi 6 and Bluetooth BLE 5 support, integrates 8MB Flash, Onboard 1.47inch IPS display can smoothly run GUI programs such as LVGL. It is suitable for the quick development of the HMI and other ESP32-C6 applications.
 
-## Left side (from top)
+Equipped with a high-performance 32-bit RISC-V processor with clock speed up to 160 MHz, and a low-power 32-bit RISC-V processor with clock speed up to 20MHz
+Supports 2.4GHz Wi-Fi 6 (802.11 ax/b/g/n) and Bluetooth 5 (LE), with onboard antenna
+Built-in 320KB ROM, 512KB HP SRAM, and 16KB LP SRAM, integrates 8MB Flash
+Onboard 1.47inch capacitive touch LCD display, 172×320 resolution, 262K color
+Adapting multiple IO interfaces, supports full-speed USB standard
+Onboard TF card slot for external TF card storage of pictures or files
+Supports accurate control such as flexible clock and multiple power modes to realize low power consumption in different scenarios
 
-| # | Label | Function  |
-|---|-------|-----------|
-| 1 | VBUS  | 5 V (USB) |
-| 2 | GND   | Ground    |
-| 3 | TXD   | UART TX   |
-| 4 | RXD   | UART RX   |
-| 5 | RST   | Reset     |
-| 6 | 1     | GPIO 1    |
-| 7 | 2     | GPIO 2    |
-| 8 | 3     | GPIO 3    |
-| 9 | 4     | GPIO 4    |
-|10 | 5     | GPIO 5    |
-|11 | 6     | GPIO 6    |
+## Display specifications
+
+| Parameter   | Value        | Parameter   | Value        |
+|-------------------|--------------|-------------|--------------|
+| Display size      | 1.47 inch    | Resolution  | 172 × 320    |
+| Display driver    | JD9853    | Touch driver| AXS5106L     |
+| Display interface | 4-wire SPI | Touch interface | I²C    |
+| Panel             | IPS          | Touch type  | Capacitive   |
+
+## Pinout — Left side (from top) | Right side (from top)
+
+| Label | Function          | | Label | Function         |
+|-------|-------------------|---|-------|------------------|
+| VBUS  | 5 V (USB)         | | VBAT  | VBAT             |
+| GND   | GND               | | GND   | GND              |
+| TXD   | GPIO16 (UART0_TX) | | GND   | GND              |
+| RXD   | GPIO17 (UART0_RX) | | 3V3   | 3.3 V            |
+| RST   | Reset             | | SCL   | GPIO19 (I²C_SCL) |
+| 1     | GPIO1 (SPI_SCLK)  | | SDA   | GPIO18 (I²C_SDA) |
+| 2     | GPIO2 (SPI_MOSI)  | | 13    | GPIO13 (USB_DP)  |
+| 3     | GPIO3 (SPI_MISO)  | | 12    | GPIO12 (USB_DN)  |
+| 4     | GPIO4             | | 9     | GPIO9            |
+| 5     | GPIO5             | | 8     | GPIO8            |
+| 6     | GPIO6             | | 7     | GPIO7            |
+
+## Touch LCD
+| Label  | Function |
+|--------|----------|
+| GPIO1  | LCD_CLK  |
+| GPIO2  | LCD_DIN  |
+| GPIO14 | LCD_CS   |
+| GPIO15 | LCD_DC   |
+| GPIO18 | TP_SDA   |
+| GPIO19 | TP_SCL   |
+| GPIO20 | TP_RST   |
+| GPIO21 | TP_INT   |
+| GPIO22 | LCD_RST  |
+| GPIO23 | LCD_BL   |
+
+## SD Card
+| Label | Function |
+|-------|----------|
+| GPIO3 | SD_MISO  |
+| GPIO2 | SD_MOSI  |
+| GPIO1 | SD_CLK   |
+| GPIO4 | SD_CS    |
+
+## QMI8658
+| Label  | Function |
+|--------|----------|
+| GPIO18 | IMU_SDA  |
+| GPIO19 | IMU_SCL  |
+| GPIO5  | IMU_INT1 |
+| GPIO6  | IMU_INT2 |
 
 ## I²C (SCD41, BME680)
 
