@@ -1,13 +1,15 @@
 # ESP32-C6 1.47inch Touch Display Development Board
+
 - 172×320 Resolution
 - 262K Display Color
 - Supports Wi-Fi 6 / BLE 5
 - 160MHz RISC-V Processor
 
-Ref: https://www.waveshare.com/esp32-c6-touch-lcd-1.47.htm?sku=31201
-Wiki: https://www.waveshare.com/wiki/ESP32-C6-Touch-LCD-1.47
+#### Ref: https://www.waveshare.com/esp32-c6-touch-lcd-1.47.htm?sku=31201
+#### Wiki: https://www.waveshare.com/wiki/ESP32-C6-Touch-LCD-1.47
 
 # Features
+
 ESP32-C6-Touch-LCD-1.47 uses ESP32-C6FH8 chip with 2.4GHz WiFi 6 and Bluetooth BLE 5 support, integrates 8MB Flash, Onboard 1.47inch IPS display can smoothly run GUI programs such as LVGL. It is suitable for the quick development of the HMI and other ESP32-C6 applications.
 
 Equipped with a high-performance 32-bit RISC-V processor with clock speed up to 160 MHz, and a low-power 32-bit RISC-V processor with clock speed up to 20MHz
@@ -20,17 +22,18 @@ Supports accurate control such as flexible clock and multiple power modes to rea
 
 ## Display specifications
 
-| Parameter   | Value        | Parameter   | Value        |
-|-------------------|--------------|-------------|--------------|
-| Display size      | 1.47 inch    | Resolution  | 172 × 320    |
-| Display driver    | JD9853    | Touch driver| AXS5106L     |
-| Display interface | 4-wire SPI | Touch interface | I²C    |
-| Panel             | IPS          | Touch type  | Capacitive   |
+| Parameter         | Value        | Parameter       | Value        |
+|-------------------|--------------|-----------------|--------------|
+| Display size      | 1.47 inch    | Resolution      | 172 × 320    |
+| Display driver    | JD9853       | Touch driver    | AXS5106L     |
+| Display interface | 4-wire SPI   | Touch interface | I²C          |
+| Panel             | IPS          | Touch type      | Capacitive   |
 
-## Pinout — Left side (from top) | Right side (from top)
+## Pinout
+### Left side (from top) | Right side (from top)
 
 | Label | Function          | | Label | Function         |
-|-------|-------------------|---|-------|------------------|
+|-------|-------------------|-|-------|------------------|
 | VBUS  | 5 V (USB)         | | VBAT  | VBAT             |
 | GND   | GND               | | GND   | GND              |
 | TXD   | GPIO16 (UART0_TX) | | GND   | GND              |
@@ -44,6 +47,7 @@ Supports accurate control such as flexible clock and multiple power modes to rea
 | 6     | GPIO6             | | 7     | GPIO7            |
 
 ## Touch LCD
+
 | Label  | Function |
 |--------|----------|
 | GPIO1  | LCD_CLK  |
@@ -58,6 +62,7 @@ Supports accurate control such as flexible clock and multiple power modes to rea
 | GPIO23 | LCD_BL   |
 
 ## SD Card
+
 | Label | Function |
 |-------|----------|
 | GPIO3 | SD_MISO  |
@@ -66,6 +71,7 @@ Supports accurate control such as flexible clock and multiple power modes to rea
 | GPIO4 | SD_CS    |
 
 ## QMI8658
+
 | Label  | Function |
 |--------|----------|
 | GPIO18 | IMU_SDA  |

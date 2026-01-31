@@ -21,5 +21,8 @@
 
 #define TFT_W 172
 #define TFT_H 320
+#define TFT_COL_OFFSET 34
+#define TFT_ROW_OFFSET 0
+#define TFT_ROTATION 3
 
 #endif
