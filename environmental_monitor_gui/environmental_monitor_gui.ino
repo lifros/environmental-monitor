@@ -147,8 +147,22 @@ static void bme680IAQ(uint32_t gasOhm, int& iaq, const __FlashStringHelper*& lab
   else                 label = F("Severely polluted");
 }
 
-// Normal layout: title at top, then SCD41, then BME680 data
-static void drawScreen(uint16_t co2, float tScd, float rhScd, float tBme, float rhBme, float p, int iaq, const __FlashStringHelper* iaqLabel) {
+// Y position of countdown line (fixed at bottom)
+static const int countdownY = TFT_H - 24;
+
+// Redraw only the countdown line
+static void drawCountdown(int secondsLeft) {
+  gfx->fillRect(0, countdownY, TFT_W, 24, RGB565_BLACK);
+  gfx->setTextSize(2);
+  gfx->setTextColor(RGB565_YELLOW, RGB565_BLACK);
+  gfx->setCursor(10, countdownY);
+  gfx->print(F("Next in: "));
+  gfx->print(secondsLeft);
+  gfx->println(F(" s"));
+}
+
+// Normal layout: title at top, then SCD41, then BME680 data, countdown at bottom
+static void drawScreen(uint16_t co2, float tScd, float rhScd, float tBme, float rhBme, float p, int iaq, const __FlashStringHelper* iaqLabel, int nextInSec) {
   gfx->fillScreen(RGB565_BLACK);
   const int marginX = 10;
   const int marginY = 10;
@@ -198,6 +212,8 @@ static void drawScreen(uint16_t co2, float tScd, float rhScd, float tBme, float 
     gfx->print(iaqLabel);
     gfx->println(F(")"));
   }
+
+  drawCountdown(nextInSec);
 }
 
 void setup() {
@@ -314,8 +330,13 @@ void loop() {
     Serial.println(iaqLabel);
   }
 
-  if (hasScd41 || hasBme680)
-    drawScreen(co2, tScd, rhScd, tBme, rhBme, p, iaq, iaqLabel);
-
-  delay(60000);
+  if (hasScd41 || hasBme680) {
+    drawScreen(co2, tScd, rhScd, tBme, rhBme, p, iaq, iaqLabel, MEASURE_INTERVAL_SEC);
+    for (int s = MEASURE_INTERVAL_SEC - 1; s >= 0; s--) {
+      drawCountdown(s);
+      delay(1000);
+    }
+  } else {
+    delay(5000);
+  }
 }

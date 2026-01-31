@@ -11,6 +11,7 @@
 
 #define IAQ_R_MIN 5000
 #define IAQ_R_MAX 60000
+#define MEASURE_INTERVAL_SEC 60
 
 #define TFT_CS   14
 #define TFT_DC   15
