@@ -29,17 +29,17 @@ Data is shown on a touch LCD and can be used for logging or automation.
 
 ## Software
 
-- **IDE**: Arduino IDE. Main console sketch: folder `environmental_monitor_console`.
+- **IDE**: Arduino IDE. Sketches: `environmental_monitor_console` (Serial only), `environmental_monitor_gui` (Serial + LCD).
 - **Board**: ESP32-C6 — install **esp32 by Espressif Systems** in Board Manager (≥ 3.0.0).
 - **Libraries** (Sketch → Include Library → Manage Libraries):
   - **Sensirion I2C SCD4x** (official SCD41/SCD40 driver)
   - **Adafruit BME680** (installs Adafruit Unified Sensor and BusIO as dependencies)
   - **Adafruit ST7735 and ST7789 Library** (integrated 172×320 display; installs Adafruit GFX)
-- **Pinout**: See [PINOUT.md](PINOUT.md). I²C: SDA/SCL on right header; GPIOs and IAQ range in each sketch’s `config.h`.
+- **Pinout**: See [PINOUT.md](PINOUT.md). I²C: SDA/SCL on right header. GUI sketch: TFT pins in `environmental_monitor_gui/config.h` (verify from board schematic).
 
 ### Build and upload (Arduino IDE)
 
-1. **File → Open** and select the sketch folder (e.g. `environmental_monitor_console` for Serial-only output).
+1. **File → Open** and select the sketch folder (`environmental_monitor_console` for Serial only, `environmental_monitor_gui` for LCD).
 2. **Tools → Board** → **ESP32 Arduino** → **ESP32C6 Dev Module** (or the exact board if listed).
 3. **Tools → Port** → select the COM port of the board.
 4. **Sketch → Upload**.
@@ -63,7 +63,8 @@ With only the board connected: 2 devices (0x63, 0x6B). With SCD41 and BME680 on 
 
 - `README.md` — this file
 - `PINOUT.md` — board pinout
-- `environmental_monitor_console/` — Serial-only sketch (SCD41 + BME680, IAQ); contains `environmental_monitor_console.ino` and `config.h` (I²C pins, `IAQ_R_MIN`, `IAQ_R_MAX`)
+- `environmental_monitor_console/` — Serial-only sketch (SCD41 + BME680, IAQ); `config.h` has I²C pins and IAQ range
+- `environmental_monitor_gui/` — Same sensors + LCD (172×320); `config.h` has I²C, IAQ, and TFT pins (CS, DC, RST, MOSI, SCK — verify from schematic)
 - `i2c_scanner/` — I2C bus scanner sketch
 
 ## License
