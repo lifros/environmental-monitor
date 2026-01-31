@@ -147,12 +147,11 @@ static void bme680IAQ(uint32_t gasOhm, int& iaq, const __FlashStringHelper*& lab
   else                 label = F("Severely polluted");
 }
 
-// Y position of countdown line (fixed at bottom)
-static const int countdownY = TFT_H - 24;
-
-// Redraw only the countdown line
+// Redraw only the countdown line (uses current rotation: bottom of visible area)
 static void drawCountdown(int secondsLeft) {
-  gfx->fillRect(0, countdownY, TFT_W, 24, RGB565_BLACK);
+  const int h = 24;
+  const int countdownY = gfx->height() - h;
+  gfx->fillRect(0, countdownY, gfx->width(), h, RGB565_BLACK);
   gfx->setTextSize(2);
   gfx->setTextColor(RGB565_YELLOW, RGB565_BLACK);
   gfx->setCursor(10, countdownY);
