@@ -150,24 +150,26 @@ static void bme680IAQ(uint32_t gasOhm, int& iaq, const __FlashStringHelper*& lab
 // Normal layout: title at top, then SCD41, then BME680 data
 static void drawScreen(uint16_t co2, float tScd, float rhScd, float tBme, float rhBme, float p, int iaq, const __FlashStringHelper* iaqLabel) {
   gfx->fillScreen(RGB565_BLACK);
-  const int lineH = 10;
-  int y = 0;
+  const int marginX = 10;
+  const int marginY = 10;
+  const int lineH = 16;
+  int y = marginY;
 
   gfx->setTextColor(RGB565_WHITE, RGB565_BLACK);
-  gfx->setTextSize(2);
-  gfx->setCursor(0, y);
+  gfx->setTextSize(3);
+  gfx->setCursor(marginX, y);
   gfx->println(F("Env Monitor"));
-  y += 18;
+  y += 24;
 
-  gfx->setTextSize(1);
+  gfx->setTextSize(2);
   if (hasScd41) {
     gfx->setTextColor(RGB565_CYAN, RGB565_BLACK);
-    gfx->setCursor(0, y);
+    gfx->setCursor(marginX, y);
     gfx->print(F("CO2: "));
     gfx->print(co2);
     gfx->println(F(" ppm"));
     y += lineH;
-    gfx->setCursor(0, y);
+    gfx->setCursor(marginX, y);
     gfx->print(F("T: "));
     gfx->print(tScd, 1);
     gfx->print(F(" C  RH: "));
@@ -177,19 +179,19 @@ static void drawScreen(uint16_t co2, float tScd, float rhScd, float tBme, float 
   }
   if (hasBme680) {
     gfx->setTextColor(RGB565_GREEN, RGB565_BLACK);
-    gfx->setCursor(0, y);
+    gfx->setCursor(marginX, y);
     gfx->print(F("BME T: "));
     gfx->print(tBme, 1);
     gfx->print(F(" C  RH: "));
     gfx->print(rhBme, 1);
     gfx->println(F(" %"));
     y += lineH;
-    gfx->setCursor(0, y);
+    gfx->setCursor(marginX, y);
     gfx->print(F("P: "));
     gfx->print(p, 0);
     gfx->println(F(" hPa"));
     y += lineH;
-    gfx->setCursor(0, y);
+    gfx->setCursor(marginX, y);
     gfx->print(F("IAQ: "));
     gfx->print(iaq);
     gfx->print(F(" ("));
@@ -216,8 +218,8 @@ void setup() {
 
   gfx->fillScreen(RGB565_BLACK);
   gfx->setTextColor(RGB565_WHITE, RGB565_BLACK);
-  gfx->setTextSize(2);
-  gfx->setCursor(10, gfx->height() / 2 - 8);
+  gfx->setTextSize(3);
+  gfx->setCursor(10, 10);
   gfx->println(F("Starting..."));
 
   i2cBusRecovery();

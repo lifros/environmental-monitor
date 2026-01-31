@@ -41,10 +41,11 @@ Data is shown on a touch LCD and can be used for logging or automation.
 
 1. **File → Open** and select the sketch folder (`environmental_monitor_console` for Serial only, `environmental_monitor_gui` for LCD).
 2. **Tools → Board** → **ESP32 Arduino** → **ESP32C6 Dev Module** (or the exact board if listed).
-3. **Tools → Port** → select the COM port of the board.
-4. **Sketch → Upload**.
-5. **Tools → Serial Monitor** at 115200 baud to see sensor output.
-6. Connect SCD41 and BME680 to the board I²C (SDA, SCL) and 3V3/GND. If sensors are not found, check I²C pins in `config.h` against the board schematic.
+3. **Tools → Partition Scheme** → **Default 4MB with spiffs** (required if your board has 4MB flash; otherwise boot fails with "partition table exceeds flash").
+4. **Tools → Port** → select the COM port of the board.
+5. **Sketch → Upload**.
+6. **Tools → Serial Monitor** at 115200 baud to see sensor output.
+7. Connect SCD41 and BME680 to the board I²C (SDA, SCL) and 3V3/GND. If sensors are not found, check I²C pins in `config.h` against the board schematic.
 
 ## I2C addresses (verified with project scanner)
 
