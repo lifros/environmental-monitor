@@ -13,12 +13,14 @@
 #define IAQ_R_MIN 5000
 #define IAQ_R_MAX 60000
 
-/** TFT display (SPI). Check schematic for your board; these are placeholders. */
-#define TFT_CS   7
-#define TFT_DC   8
-#define TFT_RST  9
-#define TFT_MOSI 10
-#define TFT_SCK  11
+/** TFT display (SPI) — from ESP32-C6-Touch-LCD-1.47 schematic (J3/LCD nets). */
+#define TFT_CS   14
+#define TFT_DC   15
+#define TFT_RST  22
+#define TFT_MOSI 2
+#define TFT_SCK  1
+/** Backlight (LEDK): GPIO 23 high = on. */
+#define TFT_BL   23
 
 #define TFT_W 172
 #define TFT_H 320

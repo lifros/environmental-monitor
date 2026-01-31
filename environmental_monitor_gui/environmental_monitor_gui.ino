@@ -69,7 +69,10 @@ static void drawScreen(uint16_t co2, float tScd, float rhScd, float tBme, float 
     tft.setTextColor(ST77XX_GREEN);
     tft.print(F("BME T: "));
     tft.print(tBme, 1);
-    tft.print(F("  P: "));
+    tft.print(F(" C  RH: "));
+    tft.print(rhBme, 1);
+    tft.println(F(" %"));
+    tft.print(F("P: "));
     tft.print(p, 0);
     tft.println(F(" hPa"));
     tft.print(F("IAQ: "));
@@ -86,6 +89,9 @@ void setup() {
   Serial.println(F("Environmental monitor — SCD41 + BME680 + LCD"));
   Serial.println(F("Waiting for sensors (2 s)..."));
   delay(2000);
+
+  pinMode(TFT_BL, OUTPUT);
+  digitalWrite(TFT_BL, HIGH);
 
   tft.init(TFT_W, TFT_H);
   tft.setRotation(1);
@@ -177,7 +183,9 @@ void loop() {
     bme680IAQ(bme.gas_resistance, iaq, iaqLabel);
     Serial.print(F("BME680 — T: "));
     Serial.print(tBme, 1);
-    Serial.print(F(" °C  P: "));
+    Serial.print(F(" °C  RH: "));
+    Serial.print(rhBme, 1);
+    Serial.print(F(" %  P: "));
     Serial.print(p, 1);
     Serial.print(F(" hPa  IAQ: "));
     Serial.print(iaq);
