@@ -1,5 +1,6 @@
 /**
  * Environmental monitor — SCD41 (CO2, T, RH) + BME680 (T, RH, pressure, gas).
+ * Console output via Serial; config in config.h.
  */
 #include <Wire.h>
 #include <SensirionI2cScd4x.h>
@@ -28,6 +29,19 @@ static void i2cBusRecovery() {
   pinMode(I2C_SDA_GPIO, INPUT);
   pinMode(I2C_SCL_GPIO, INPUT);
   delay(10);
+}
+
+// IAQ (Indoor Air Quality) index 0-500 from BME680 gas resistance (lower = better)
+static void bme680IAQ(uint32_t gasOhm, int& iaq, const __FlashStringHelper*& label) {
+  iaq = (gasOhm <= IAQ_R_MIN) ? 500 : (gasOhm >= IAQ_R_MAX) ? 0
+      : (int)(500 - (long)(gasOhm - IAQ_R_MIN) * 500 / (long)(IAQ_R_MAX - IAQ_R_MIN));
+  iaq = (iaq < 0) ? 0 : (iaq > 500) ? 500 : iaq;
+  if (iaq <= 50)       label = F("Excellent");
+  else if (iaq <= 100) label = F("Good");
+  else if (iaq <= 150) label = F("Lightly polluted");
+  else if (iaq <= 200) label = F("Moderately polluted");
+  else if (iaq <= 300) label = F("Heavily polluted");
+  else                 label = F("Severely polluted");
 }
 
 void setup() {
@@ -114,6 +128,9 @@ void loop() {
   }
 
   if (hasBme680 && bme.performReading()) {
+    int iaq;
+    const __FlashStringHelper* iaqLabel;
+    bme680IAQ(bme.gas_resistance, iaq, iaqLabel);
     Serial.print(F("BME680 — T: "));
     Serial.print(bme.temperature, 1);
     Serial.print(F(" °C  RH: "));
@@ -122,7 +139,11 @@ void loop() {
     Serial.print(bme.pressure / 100.0f, 1);
     Serial.print(F(" hPa  gas: "));
     Serial.print(bme.gas_resistance);
-    Serial.println(F(" Ω"));
+    Serial.print(F(" Ω  IAQ: "));
+    Serial.print(iaq);
+    Serial.print(F(" ("));
+    Serial.print(iaqLabel);
+    Serial.println(F(")"));
   }
 
   delay(60000);

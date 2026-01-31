@@ -8,4 +8,8 @@
 #define I2C_SDA_GPIO 18
 #define I2C_SCL_GPIO 19
 
+/** BME680 IAQ: gas resistance range (ohm). Lower R = more VOCs = worse IAQ. */
+#define IAQ_R_MIN 5000
+#define IAQ_R_MAX 60000
+
 #endif
