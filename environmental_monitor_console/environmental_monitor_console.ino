@@ -78,6 +78,12 @@ void setup() {
     Serial.print(serialNumber, HEX);
     Serial.println(F(")."));
     delay(100);
+    // Self-heating compensation (chip recalculates T and RH)
+    if (scd41.setTemperatureOffset(SCD41_TEMP_OFFSET_C) == 0) {
+      Serial.print(F("SCD41: temp offset "));
+      Serial.print(SCD41_TEMP_OFFSET_C);
+      Serial.println(F(" °C"));
+    }
     if (scd41.startPeriodicMeasurement() == 0) {
       hasScd41 = true;
       Serial.println(F("SCD41: measuring (first result in ~5 s, then every 60 s)."));

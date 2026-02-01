@@ -8,6 +8,9 @@
 #define I2C_SDA_GPIO 18
 #define I2C_SCL_GPIO 19
 
+/** SCD41 self-heating compensation: offset in °C (e.g. -2.5 = 2.5°C lower; chip recalculates RH). */
+#define SCD41_TEMP_OFFSET_C (-2.5f)
+
 /** BME680 IAQ: gas resistance range (ohm). Lower R = more VOCs = worse IAQ. */
 #define IAQ_R_MIN 5000
 #define IAQ_R_MAX 60000
