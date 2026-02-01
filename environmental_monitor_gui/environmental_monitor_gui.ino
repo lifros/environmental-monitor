@@ -289,9 +289,11 @@ void setup() {
   }
 }
 
-// SCD41 valid range (datasheet); -45°C / 100% = invalid sentinel values
+// SCD41 valid range per Sensirion datasheet Table 2 & 3: T -10..60 °C, RH 0..100%;
+// invalid/not-ready often reported as T = -45 °C, RH = 100 % (raw 0 / 0xFFFF)
 static bool scd41Valid(float tC, float rh) {
-  return (tC >= -40.0f && tC <= 85.0f && rh >= 0.0f && rh < 99.5f);
+  if (tC <= -44.0f && tC >= -46.0f && rh >= 99.5f) return false;  // sentinel
+  return (tC >= -10.0f && tC <= 60.0f && rh >= 0.0f && rh <= 100.0f);
 }
 
 void loop() {
@@ -315,6 +317,7 @@ void loop() {
       delay(1000);
       return;
     }
+    // read_measurement: CO2 [ppm], T [°C], RH [%] per datasheet Table 11
     if (scd41.readMeasurement(co2, tScd, rhScd) != 0) {
       Serial.println(F("SCD41: read error"));
       delay(5000);
