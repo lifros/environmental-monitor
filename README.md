@@ -24,8 +24,8 @@ Data is shown on a touch LCD and can be used for logging or automation.
 
 ## Sensors
 
-- **SCD41**: NDIR CO2, built-in temperature and humidity (used primarily for CO2).
-- **BME680**: Temperature, relative humidity, barometric pressure, and VOC/gas resistance (indoor air quality).
+- **SCD41**: NDIR CO2, built-in temperature and humidity (used primarily for CO2). For specs and **temperature/humidity compensation** (self-heating offset), see [docs/SCD41-specs-and-compensation.md](docs/SCD41-specs-and-compensation.md).
+- **BME680**: Temperature, relative humidity, barometric pressure, and VOC/gas resistance (indoor air quality). For specs and configuration notes (oversampling order, heater, IAQ), see [docs/BME680-specs-and-notes.md](docs/BME680-specs-and-notes.md).
 
 ## Software
 
@@ -64,10 +64,12 @@ With only the board connected: 2 devices (0x63, 0x6B). With SCD41 and BME680 on 
 
 - `README.md` — this file
 - `PINOUT.md` — board pinout
+- `docs/SCD41-specs-and-compensation.md` — SCD41 specs and T/RH compensation procedure
+- `docs/BME680-specs-and-notes.md` — BME680 specs and configuration notes (oversampling, heater, IAQ)
 - `environmental_monitor_console/` — Serial-only sketch (SCD41 + BME680, IAQ); `config.h` has I²C pins and IAQ range
 - `environmental_monitor_gui/` — Same sensors + LCD (172×320, Arduino_GFX_Library, official init); `config.h` has I²C, IAQ, TFT pins, and TFT_ROTATION
 - `i2c_scanner/` — I2C bus scanner sketch
 
 ## License
 
-_(Specify license if needed.)_
+This project is licensed under the **MIT License**. See [LICENSE](LICENSE) for the full text.

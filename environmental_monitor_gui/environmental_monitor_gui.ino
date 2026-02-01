@@ -279,9 +279,9 @@ void setup() {
     Serial.println(F("BME680: not found."));
   } else {
     hasBme680 = true;
-    // Oversampling and heater per Bosch/Adafruit examples; IIR filters pressure only
-    bme.setTemperatureOversampling(BME680_OS_8X);
+    // Bosch recommends osrs_h then osrs_t then osrs_p (Section 3.2.1); IIR filters T and P only
     bme.setHumidityOversampling(BME680_OS_2X);
+    bme.setTemperatureOversampling(BME680_OS_8X);
     bme.setPressureOversampling(BME680_OS_4X);
     bme.setIIRFilterSize(BME680_FILTER_SIZE_3);
     bme.setGasHeater(320, 150);  // 320°C, 150 ms — standard for indoor IAQ

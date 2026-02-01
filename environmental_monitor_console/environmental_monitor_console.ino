@@ -97,9 +97,9 @@ void setup() {
     Serial.println(F("BME680: not found at 0x77."));
   } else {
     hasBme680 = true;
-    // Oversampling and heater per Bosch/Adafruit examples
-    bme.setTemperatureOversampling(BME680_OS_8X);
+    // Bosch recommends osrs_h then osrs_t then osrs_p (Section 3.2.1)
     bme.setHumidityOversampling(BME680_OS_2X);
+    bme.setTemperatureOversampling(BME680_OS_8X);
     bme.setPressureOversampling(BME680_OS_4X);
     bme.setIIRFilterSize(BME680_FILTER_SIZE_3);
     bme.setGasHeater(320, 150);  // 320°C, 150 ms — standard for indoor IAQ
