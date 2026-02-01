@@ -36,6 +36,7 @@ Data is shown on a touch LCD and can be used for logging or automation.
   - **Adafruit BME680** (installs Adafruit Unified Sensor and BusIO as dependencies)
   - **Arduino_GFX_Library** (GUI sketch: 172×320 display with official board init; install from Library Manager)
 - **Pinout**: See [PINOUT.md](PINOUT.md). I²C: SDA/SCL on right header. GUI sketch: TFT pins in `environmental_monitor_gui/config.h` (verify from board schematic).
+- **Home Assistant (Zigbee)**: ESP32-C6 supports Zigbee only with ESP-IDF; see [docs/HA-integration.md](docs/HA-integration.md) and [environmental_monitor_zigbee_espidf/](environmental_monitor_zigbee_espidf/).
 
 ### Build and upload (Arduino IDE)
 
@@ -68,7 +69,9 @@ With only the board connected: 2 devices (0x63, 0x6B). With SCD41 and BME680 on 
 - `docs/BME680-specs-and-notes.md` — BME680 specs and configuration notes (oversampling, heater, IAQ)
 - `environmental_monitor_console/` — Serial-only sketch (SCD41 + BME680, IAQ); `config.h` has I²C pins and IAQ range
 - `environmental_monitor_gui/` — Same sensors + LCD (172×320, Arduino_GFX_Library, official init); `config.h` has I²C, IAQ, TFT pins, and TFT_ROTATION
+- `environmental_monitor_zigbee_espidf/` — README and outline for Zigbee via ESP-IDF (Home Assistant)
 - `i2c_scanner/` — I2C bus scanner sketch
+- `docs/HA-integration.md` — Home Assistant via Zigbee (ESP-IDF)
 
 ## License
 
