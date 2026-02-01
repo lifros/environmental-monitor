@@ -84,6 +84,7 @@ void setup() {
       Serial.print(SCD41_TEMP_OFFSET_C);
       Serial.println(F(" °C"));
     }
+    delay(500);  // let sensor store offset before starting measurement
     if (scd41.startPeriodicMeasurement() == 0) {
       hasScd41 = true;
       Serial.println(F("SCD41: measuring (first result in ~5 s, then every 60 s)."));
@@ -105,6 +106,11 @@ void setup() {
   }
 }
 
+// SCD41 valid range (datasheet); -45°C / 100% = invalid sentinel values
+static bool scd41Valid(float tC, float rh) {
+  return (tC >= -40.0f && tC <= 85.0f && rh >= 0.0f && rh < 99.5f);
+}
+
 void loop() {
   if (hasScd41) {
     bool dataReady = false;
@@ -124,13 +130,17 @@ void loop() {
       delay(5000);
       return;
     }
-    Serial.print(F("SCD41 — CO2: "));
-    Serial.print(co2);
-    Serial.print(F(" ppm  T: "));
-    Serial.print(temperature, 1);
-    Serial.print(F(" °C  RH: "));
-    Serial.print(humidity, 1);
-    Serial.println(F(" %"));
+    if (!scd41Valid(temperature, humidity)) {
+      Serial.println(F("SCD41: invalid T/RH"));
+    } else {
+      Serial.print(F("SCD41 — CO2: "));
+      Serial.print(co2);
+      Serial.print(F(" ppm  T: "));
+      Serial.print(temperature, 1);
+      Serial.print(F(" °C  RH: "));
+      Serial.print(humidity, 1);
+      Serial.println(F(" %"));
+    }
   }
 
   if (hasBme680 && bme.performReading()) {

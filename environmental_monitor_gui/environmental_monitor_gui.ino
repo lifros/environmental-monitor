@@ -268,6 +268,7 @@ void setup() {
       Serial.print(SCD41_TEMP_OFFSET_C);
       Serial.println(F(" °C"));
     }
+    delay(500);  // let sensor store offset before starting measurement
     if (scd41.startPeriodicMeasurement() == 0) {
       hasScd41 = true;
       Serial.println(F("SCD41: measuring."));
@@ -287,9 +288,18 @@ void setup() {
   }
 }
 
+// SCD41 valid range (datasheet); -45°C / 100% = invalid sentinel values
+static bool scd41Valid(float tC, float rh) {
+  return (tC >= -40.0f && tC <= 85.0f && rh >= 0.0f && rh < 99.5f);
+}
+
 void loop() {
-  uint16_t co2 = 0;
-  float tScd = 0, rhScd = 0;
+  static uint16_t lastCo2 = 0;
+  static float lastTScd = 0, lastRhScd = 0;
+  static bool haveValidScd41 = false;
+
+  uint16_t co2 = lastCo2;
+  float tScd = lastTScd, rhScd = lastRhScd;
   float tBme = 0, rhBme = 0, p = 0;
   int iaq = 0;
   const __FlashStringHelper* iaqLabel = F("—");
@@ -309,13 +319,24 @@ void loop() {
       delay(5000);
       return;
     }
-    Serial.print(F("SCD41 — CO2: "));
-    Serial.print(co2);
-    Serial.print(F(" ppm  T: "));
-    Serial.print(tScd, 1);
-    Serial.print(F(" °C  RH: "));
-    Serial.print(rhScd, 1);
-    Serial.println(F(" %"));
+    if (!scd41Valid(tScd, rhScd)) {
+      Serial.println(F("SCD41: invalid T/RH (using last valid)"));
+      co2 = lastCo2;
+      tScd = lastTScd;
+      rhScd = lastRhScd;
+    } else {
+      lastCo2 = co2;
+      lastTScd = tScd;
+      lastRhScd = rhScd;
+      haveValidScd41 = true;
+      Serial.print(F("SCD41 — CO2: "));
+      Serial.print(co2);
+      Serial.print(F(" ppm  T: "));
+      Serial.print(tScd, 1);
+      Serial.print(F(" °C  RH: "));
+      Serial.print(rhScd, 1);
+      Serial.println(F(" %"));
+    }
   }
 
   if (hasBme680 && bme.performReading()) {
