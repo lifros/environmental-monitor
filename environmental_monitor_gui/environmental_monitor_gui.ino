@@ -1,13 +1,18 @@
 /**
  * Environmental monitor — SCD41 + BME680 with LCD (172×320).
- * Serial output + display. Config in config.h.
- * Display: Arduino_GFX_Library with official board init sequence.
+ * Serial output + display. Optional WiFi + MQTT for Home Assistant.
+ * Config in config.h. Display: Arduino_GFX_Library with official board init sequence.
  */
 #include <Wire.h>
 #include <SensirionI2cScd4x.h>
 #include <Adafruit_BME680.h>
 #include <Arduino_GFX_Library.h>
 #include "config.h"
+
+#if ENABLE_MQTT
+#include <WiFi.h>
+#include <PubSubClient.h>
+#endif
 
 Arduino_DataBus *bus = new Arduino_HWSPI(TFT_DC, TFT_CS, TFT_SCK, TFT_MOSI);
 Arduino_GFX *gfx = new Arduino_ST7789(
@@ -17,6 +22,13 @@ Arduino_GFX *gfx = new Arduino_ST7789(
 
 SensirionI2cScd4x scd41;
 Adafruit_BME680 bme;
+
+#if ENABLE_MQTT
+WiFiClient wifiClient;
+PubSubClient mqtt(wifiClient);
+static char mqttStateTopic[48];
+static bool mqttDiscoveryPublished = false;
+#endif
 
 bool hasScd41 = false;
 bool hasBme680 = false;
@@ -147,6 +159,105 @@ static void bme680IAQ(uint32_t gasOhm, int& iaq, const __FlashStringHelper*& lab
   else                 label = F("Severely polluted");
 }
 
+#if ENABLE_MQTT
+static void wifiConnect() {
+  if (WiFi.status() == WL_CONNECTED) return;
+  Serial.print(F("WiFi connecting to "));
+  Serial.println(WIFI_SSID);
+  WiFi.mode(WIFI_STA);
+  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+  for (int i = 0; i < 30 && WiFi.status() != WL_CONNECTED; i++) {
+    delay(500);
+    Serial.print('.');
+  }
+  Serial.println();
+  if (WiFi.status() == WL_CONNECTED) {
+    Serial.print(F("WiFi OK "));
+    Serial.println(WiFi.localIP());
+  } else Serial.println(F("WiFi failed"));
+}
+
+static void mqttPublishDiscovery() {
+  if (mqttDiscoveryPublished || !mqtt.connected()) return;
+  const char* stateTopic = mqttStateTopic;
+  const char* devId = MQTT_DEVICE_ID;
+  char topic[80];
+  char payload[320];
+  snprintf(topic, sizeof(topic), "homeassistant/sensor/%s_co2/config", devId);
+  snprintf(payload, sizeof(payload),
+    "{\"name\":\"EnvMon CO2\",\"state_topic\":\"%s\",\"value_template\":\"{{ value_json.co2 }}\","
+    "\"unit_of_measurement\":\"ppm\",\"device_class\":\"carbon_dioxide\",\"unique_id\":\"%s_co2\"}",
+    stateTopic, devId);
+  if (!mqtt.publish(topic, payload, true)) return;
+  snprintf(topic, sizeof(topic), "homeassistant/sensor/%s_temp_scd41/config", devId);
+  snprintf(payload, sizeof(payload),
+    "{\"name\":\"EnvMon Temp (SCD41)\",\"state_topic\":\"%s\",\"value_template\":\"{{ value_json.temperature_scd41 }}\","
+    "\"unit_of_measurement\":\"°C\",\"device_class\":\"temperature\",\"unique_id\":\"%s_temp_scd41\"}",
+    stateTopic, devId);
+  if (!mqtt.publish(topic, payload, true)) return;
+  snprintf(topic, sizeof(topic), "homeassistant/sensor/%s_humidity_scd41/config", devId);
+  snprintf(payload, sizeof(payload),
+    "{\"name\":\"EnvMon Humidity (SCD41)\",\"state_topic\":\"%s\",\"value_template\":\"{{ value_json.humidity_scd41 }}\","
+    "\"unit_of_measurement\":\"%%\",\"device_class\":\"humidity\",\"unique_id\":\"%s_humidity_scd41\"}",
+    stateTopic, devId);
+  if (!mqtt.publish(topic, payload, true)) return;
+  snprintf(topic, sizeof(topic), "homeassistant/sensor/%s_temp_bme/config", devId);
+  snprintf(payload, sizeof(payload),
+    "{\"name\":\"EnvMon Temp (BME680)\",\"state_topic\":\"%s\",\"value_template\":\"{{ value_json.temperature_bme }}\","
+    "\"unit_of_measurement\":\"°C\",\"device_class\":\"temperature\",\"unique_id\":\"%s_temp_bme\"}",
+    stateTopic, devId);
+  if (!mqtt.publish(topic, payload, true)) return;
+  snprintf(topic, sizeof(topic), "homeassistant/sensor/%s_humidity_bme/config", devId);
+  snprintf(payload, sizeof(payload),
+    "{\"name\":\"EnvMon Humidity (BME680)\",\"state_topic\":\"%s\",\"value_template\":\"{{ value_json.humidity_bme }}\","
+    "\"unit_of_measurement\":\"%%\",\"device_class\":\"humidity\",\"unique_id\":\"%s_humidity_bme\"}",
+    stateTopic, devId);
+  if (!mqtt.publish(topic, payload, true)) return;
+  snprintf(topic, sizeof(topic), "homeassistant/sensor/%s_pressure/config", devId);
+  snprintf(payload, sizeof(payload),
+    "{\"name\":\"EnvMon Pressure\",\"state_topic\":\"%s\",\"value_template\":\"{{ value_json.pressure }}\","
+    "\"unit_of_measurement\":\"hPa\",\"device_class\":\"pressure\",\"unique_id\":\"%s_pressure\"}",
+    stateTopic, devId);
+  if (!mqtt.publish(topic, payload, true)) return;
+  snprintf(topic, sizeof(topic), "homeassistant/sensor/%s_iaq/config", devId);
+  snprintf(payload, sizeof(payload),
+    "{\"name\":\"EnvMon IAQ\",\"state_topic\":\"%s\",\"value_template\":\"{{ value_json.iaq }}\","
+    "\"unique_id\":\"%s_iaq\"}",
+    stateTopic, devId);
+  if (!mqtt.publish(topic, payload, true)) return;
+  mqttDiscoveryPublished = true;
+  Serial.println(F("MQTT discovery published"));
+}
+
+static void mqttConnect() {
+  if (mqtt.connected()) return;
+  wifiConnect();
+  if (WiFi.status() != WL_CONNECTED) return;
+  mqtt.setServer(MQTT_BROKER, MQTT_PORT);
+  mqtt.setBufferSize(512);
+  Serial.print(F("MQTT connecting to "));
+  Serial.println(MQTT_BROKER);
+  bool ok = (strlen(MQTT_USER) > 0)
+    ? mqtt.connect(MQTT_DEVICE_ID, MQTT_USER, MQTT_PASSWORD)
+    : mqtt.connect(MQTT_DEVICE_ID);
+  if (ok) {
+    Serial.println(F("MQTT connected"));
+    mqttPublishDiscovery();
+  } else Serial.println(mqtt.state());
+}
+
+static void mqttPublishState(uint16_t co2, float tScd, float rhScd, float tBme, float rhBme, float p, int iaq) {
+  if (!mqtt.connected()) return;
+  char payload[220];
+  int n = snprintf(payload, sizeof(payload),
+    "{\"co2\":%u,\"temperature_scd41\":%.1f,\"humidity_scd41\":%.1f,"
+    "\"temperature_bme\":%.1f,\"humidity_bme\":%.1f,\"pressure\":%.1f,\"iaq\":%d}",
+    co2, tScd, rhScd, tBme, rhBme, p, iaq);
+  if (n > 0 && (size_t)n < sizeof(payload))
+    mqtt.publish(mqttStateTopic, payload, false);
+}
+#endif
+
 // Redraw only the countdown line (uses current rotation: bottom of visible area)
 static void drawCountdown(int secondsLeft) {
   const int h = 24;
@@ -159,6 +270,22 @@ static void drawCountdown(int secondsLeft) {
   gfx->print(secondsLeft);
   gfx->println(F(" s"));
 }
+
+#if ENABLE_MQTT
+// WiFi/MQTT status icon: top-right corner. Green = both connected, yellow = WiFi only, gray = disconnected.
+static void drawConnectionIndicator(bool wifiOk, bool mqttOk) {
+  const int boxW = 24;
+  const int boxH = 24;
+  const int x0 = gfx->width() - boxW - 6;
+  const int y0 = 6;
+  const int cx = x0 + boxW / 2;
+  const int cy = y0 + boxH / 2;
+  const int r = 8;
+  gfx->fillRect(x0, y0, boxW, boxH, RGB565_BLACK);
+  uint16_t color = mqttOk ? RGB565_GREEN : (wifiOk ? RGB565_YELLOW : (uint16_t)0x3186);  /* dark gray */
+  gfx->fillCircle(cx, cy, r, color);
+}
+#endif
 
 // Normal layout: title at top, then SCD41, then BME680 data, countdown at bottom
 static void drawScreen(uint16_t co2, float tScd, float rhScd, float tBme, float rhBme, float p, int iaq, const __FlashStringHelper* iaqLabel, int nextInSec) {
@@ -173,6 +300,10 @@ static void drawScreen(uint16_t co2, float tScd, float rhScd, float tBme, float 
   gfx->setCursor(marginX, y);
   gfx->println(F("Env Monitor"));
   y += 24;
+
+#if ENABLE_MQTT
+  drawConnectionIndicator(WiFi.status() == WL_CONNECTED, mqtt.connected());
+#endif
 
   gfx->setTextSize(2);
   if (hasScd41) {
@@ -236,6 +367,10 @@ void setup() {
   gfx->setTextSize(3);
   gfx->setCursor(10, 10);
   gfx->println(F("Starting..."));
+
+#if ENABLE_MQTT
+  snprintf(mqttStateTopic, sizeof(mqttStateTopic), "%s/state", MQTT_DEVICE_ID);
+#endif
 
   i2cBusRecovery();
   Wire.begin(I2C_SDA_GPIO, I2C_SCL_GPIO);
@@ -361,8 +496,16 @@ void loop() {
   }
 
   if (hasScd41 || hasBme680) {
+#if ENABLE_MQTT
+    mqttConnect();
+    mqttPublishState(co2, tScd, rhScd, tBme, rhBme, p, iaq);
+#endif
     drawScreen(co2, tScd, rhScd, tBme, rhBme, p, iaq, iaqLabel, MEASURE_INTERVAL_SEC);
     for (int s = MEASURE_INTERVAL_SEC - 1; s >= 0; s--) {
+#if ENABLE_MQTT
+      mqtt.loop();
+      drawConnectionIndicator(WiFi.status() == WL_CONNECTED, mqtt.connected());
+#endif
       drawCountdown(s);
       delay(1000);
     }

@@ -30,4 +30,15 @@
 #define TFT_ROW_OFFSET 0
 #define TFT_ROTATION 3
 
+/* WiFi + MQTT (Home Assistant). Set ENABLE_MQTT 0 to disable.
+ * Library: PubSubClient (Nick O'Leary) or PubSubClient3 (Holger Mueller); both use PubSubClient.h */
+#define ENABLE_MQTT 1
+#define WIFI_SSID     "home_iot"
+#define WIFI_PASSWORD "HomeIot2024!"
+#define MQTT_BROKER   "homeassistant.home.encryptio.it"   /* or your HA / broker hostname */
+#define MQTT_PORT     1883
+#define MQTT_USER     "mqtt_user"                /* leave "" if no auth */
+#define MQTT_PASSWORD "30Ott2008!"
+#define MQTT_DEVICE_ID "envmon_gui"     /* used in topic and HA entity_id prefix */
+
 #endif
