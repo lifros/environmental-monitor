@@ -12,6 +12,7 @@
 /** SCD41 self-heating: sensor reads this much above ambient; chip subtracts it (e.g. 2.5 = report 2.5°C lower; recalculates RH). */
 #define SCD41_TEMP_OFFSET_C (2.5f)
 
+/** BME680 IAQ: gas resistance (ohm). R < R_MIN = worst, R > R_MAX = best. Tune after 10–30 min burn-in. */
 #define IAQ_R_MIN 5000
 #define IAQ_R_MAX 60000
 #define MEASURE_INTERVAL_SEC 60
