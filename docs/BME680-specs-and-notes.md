@@ -41,7 +41,7 @@ Source: [BME680 Datasheet](https://www.bosch-sensortec.com/media/boschsensortec/
 | Absolute accuracy | 25°C | ±0.5°C |
 | | 0–65°C | ±1.0°C |
 
-*Datasheet footnote: “Temperature measured by the internal temperature sensor … is **typically above ambient temperature**” (PCB and self-heating). There is **no software temperature-offset command** in the BME680 register map; BSEC compensates ambient T in their closed-source stack. Our sketch uses the sensor API as-is.*
+*Datasheet footnote: “Temperature measured by the internal temperature sensor … is **typically above ambient temperature**” (PCB and self-heating). There is **no software temperature-offset command** in the BME680 register map; BSEC compensates ambient T in their closed-source stack. The project optionally applies **software calibration** in firmware (*BME680_TEMP_OFFSET_C*, *BME680_HUMIDITY_OFFSET* in `config.h`): added to the raw reading, then RH clamped to 0–100%. This is user calibration to match a reference (e.g. another sensor); it does not change the sensor’s operating range or violate specs.*
 
 ---
 
@@ -88,4 +88,4 @@ The Adafruit BME680 library does not expose these bits in the high-level API; fo
 | Pressure oversampling | Quick start uses 16x | We use 4x; 16x improves pressure noise, increases measurement time. |
 | Heater 300 vs 320°C | Quick start 300°C 100 ms | We use 320°C 150 ms; both valid; 300/100 saves a little power. |
 | heat_stab_r / gas_valid_r | Check for reliable gas reading | Not exposed by Adafruit API; optional custom read for production. |
-| BME680 T above ambient | No offset in register map | Documented; no code change unless using BSEC. |
+| BME680 T above ambient | No offset in register map | Optional software offset in `config.h` (BME680_TEMP_OFFSET_C, BME680_HUMIDITY_OFFSET) to match a reference; RH clamped 0–100%. |

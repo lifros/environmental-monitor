@@ -479,8 +479,10 @@ void loop() {
   }
 
   if (hasBme680 && bme.performReading()) {
-    tBme = bme.temperature;
-    rhBme = bme.humidity;
+    tBme = bme.temperature + BME680_TEMP_OFFSET_C;
+    rhBme = bme.humidity + BME680_HUMIDITY_OFFSET;
+    if (rhBme < 0.0f) rhBme = 0.0f;
+    if (rhBme > 100.0f) rhBme = 100.0f;
     p = bme.pressure / 100.0f;
     bme680IAQ(bme.gas_resistance, iaq, iaqLabel);
     Serial.print(F("BME680 — T: "));

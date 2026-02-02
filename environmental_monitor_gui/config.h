@@ -9,8 +9,13 @@
 #define I2C_SDA_GPIO 18
 #define I2C_SCL_GPIO 19
 
-/** SCD41 self-heating: sensor reads this much above ambient; chip subtracts it (e.g. 2.5 = report 2.5°C lower; recalculates RH). */
-#define SCD41_TEMP_OFFSET_C (2.5f)
+/** SCD41 self-heating: sensor reads this much above ambient; chip subtracts it (recalculates RH).
+ *  Calibrated vs Aqara THP (ref T 19.6°C): SCD41 was 21.4°C → offset 4.3°C. */
+#define SCD41_TEMP_OFFSET_C (4.3f)
+
+/** BME680 software calibration vs Aqara THP (ref T 19.6°C, H 62.74%). Add to raw reading. */
+#define BME680_TEMP_OFFSET_C   (-0.9f)   /* BME was 20.5°C */
+#define BME680_HUMIDITY_OFFSET  (6.0f)   /* BME was 56.7% */
 
 /** BME680 IAQ: gas resistance (ohm). R < R_MIN = worst, R > R_MAX = best. Tune after 10–30 min burn-in. */
 #define IAQ_R_MIN 5000
