@@ -47,6 +47,8 @@ Source: [SCD4x Datasheet](https://sensirion.com/media/documents/48C4B7FB/67FE019
 - Average current (periodic, 1 meas/5 s): ~15–18 mA @ 3.3 V
 - Commands: **set_temperature_offset** 0x241d, **get_temperature_offset** 0x2318 (only in **idle** mode)
 
+**Official correction for T:** The datasheet defines **only one** temperature correction: the **temperature offset** (command above). Recommended range: **0 °C to 20 °C**. There is no other T correction or software-offset in the SCD4x spec; the chip subtracts this offset from its internal reading and recalculates RH from it.
+
 ---
 
 ## 2. How compensation works (Section 3.7)
