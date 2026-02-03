@@ -79,7 +79,7 @@ Supports accurate control such as flexible clock and multiple power modes to rea
 | GPIO5  | IMU_INT1 |
 | GPIO6  | IMU_INT2 |
 
-## I²C (SCD41, BME680)
+## I²C (SCD41)
 
 - **SDA**, **SCL** — right side pins 6 and 5  
 - **3V3**, **GND** — right side pins 4 and 2 or 3  
@@ -100,5 +100,4 @@ The SDA/SCL pins on the header are not labeled with GPIO numbers. You can find t
    - **0x63** — onboard touch
    - **0x6B** — onboard IMU / touch
    - **0x62** — SCD41 (external)
-   - **0x77** — BME680 (external)
    The project’s `config.h` sets `I2C_SDA_GPIO` and `I2C_SCL_GPIO` accordingly.

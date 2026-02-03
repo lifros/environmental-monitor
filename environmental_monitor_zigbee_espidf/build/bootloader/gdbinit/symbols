@@ -1,9 +1,0 @@
-
-
-# Load bootloader symbols
-set confirm off
-    # Bootloader elf was not found
-set confirm on
-
-# Load application symbols
-file C:/Users/lucad/Cursor/environmental-monitor/environmental_monitor_zigbee_espidf/build/bootloader/bootloader.elf

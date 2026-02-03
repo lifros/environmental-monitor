@@ -11,7 +11,7 @@ void setup() {
   Serial.begin(115200);
   delay(1000);
   Serial.println(F("I2C Scanner — ESP32-C6-Touch-LCD-1.47"));
-  Serial.println(F("Onboard: 0x63 touch, 0x6B IMU/touch. External: 0x62 SCD41, 0x77 BME680"));
+  Serial.println(F("Onboard: 0x63 touch, 0x6B IMU/touch. External: 0x62 SCD41"));
   Serial.println();
 
 
@@ -49,7 +49,6 @@ const __FlashStringHelper* label(uint8_t addr) {
     case 0x62: return F("SCD41 (external)");
     case 0x63: return F("onboard touch");
     case 0x6B: return F("onboard IMU / touch");
-    case 0x77: return F("BME680 (external)");
     default:   return F("—");
   }
 }

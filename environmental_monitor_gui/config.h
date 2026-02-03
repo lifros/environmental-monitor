@@ -9,13 +9,21 @@
 #define I2C_SDA_GPIO 18
 #define I2C_SCL_GPIO 19
 
-/** Temperature and humidity reference: BME680 (BSEC2). SCD41 T/RH for comparison only. */
+/** CO2 monitor: SCD41 only. T/RH from SCD41 for context. See docs/SCD41-specs-and-compensation.md. */
 
-/** SCD41: chip temperature offset (0–20 °C per datasheet). Chip automatically recalculates RH from corrected T. */
+/** SCD41: chip temperature offset (0–20 °C per datasheet). Chip recalculates RH from corrected T. */
 #define SCD41_TEMP_OFFSET_C (3.0f)
 
+/** SCD41: sensor altitude in metres (0 = do not set, use default 0 m). Set for pressure compensation; then optionally persist. */
+#define SCD41_SENSOR_ALTITUDE_M (0u)
+
+/** SCD41: 1 = persist offset/altitude to EEPROM after setup (max 2000 writes lifetime). 0 = apply from config each boot. */
+#define SCD41_PERSIST_SETTINGS (0)
+
+/** SCD41: 1 = low power periodic (~30 s interval, ~3.2 mA); 0 = high performance (~5 s interval, ~15–18 mA). Use 30 s measure interval when 1. */
+#define SCD41_LOW_POWER_PERIODIC (0)
+
 #define MEASURE_INTERVAL_SEC 60
-#define BSEC_STATE_SAVE_INTERVAL_CYCLES 10
 
 #define TFT_CS   14
 #define TFT_DC   15

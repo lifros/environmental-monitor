@@ -1,2 +1,0 @@
-# Target board: ESP32-C6-Touch-LCD-1.47
-CONFIG_IDF_TARGET="esp32c6"

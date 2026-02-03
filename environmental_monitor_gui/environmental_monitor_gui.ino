@@ -1,13 +1,11 @@
 /**
- * Environmental monitor — SCD41 + BME680 with LCD (172×320).
+ * Environmental monitor — SCD41 CO2 + T/RH with LCD (172×320).
  * Serial output + display. Optional WiFi + MQTT for Home Assistant.
  * Config in config.h. Display: Arduino_GFX_Library with official board init sequence.
  */
 #include <Wire.h>
 #include <SensirionI2cScd4x.h>
-#include <bsec2.h>
 #include <Arduino_GFX_Library.h>
-#include <Preferences.h>
 #include "config.h"
 
 #if ENABLE_MQTT
@@ -22,7 +20,6 @@ Arduino_GFX *gfx = new Arduino_ST7789(
   TFT_COL_OFFSET, TFT_ROW_OFFSET, TFT_COL_OFFSET, TFT_ROW_OFFSET);
 
 SensirionI2cScd4x scd41;
-Bsec2 bme680;
 
 #if ENABLE_MQTT
 WiFiClient wifiClient;
@@ -32,7 +29,6 @@ static bool mqttDiscoveryPublished = false;
 #endif
 
 bool hasScd41 = false;
-bool hasBme680 = false;
 
 // Release I2C bus if a slave is holding SDA/SCL after master reset
 static void i2cBusRecovery() {
@@ -148,21 +144,6 @@ static void lcd_reg_init(void) {
   bus->batchOperation(init_operations, sizeof(init_operations));
 }
 
-// BSEC IAQ classification (official Bosch bands)
-static const __FlashStringHelper* bsecIAQLabel(float iaq) {
-  if (iaq <= 50)       return F("Excellent");
-  if (iaq <= 100)      return F("Good");
-  if (iaq <= 150)      return F("Lightly polluted");
-  if (iaq <= 200)      return F("Moderately polluted");
-  if (iaq <= 300)      return F("Heavily polluted");
-  return F("Severely polluted");
-}
-
-static bool bmeValuesValid(float t, float rh, float p, float iaq) {
-  return (t >= -40.0f && t <= 85.0f && rh >= 0.0f && rh <= 100.0f &&
-          p >= 300.0f && p <= 1100.0f && iaq >= 0.0f && iaq <= 500.0f);
-}
-
 #if ENABLE_MQTT
 static void wifiConnect() {
   if (WiFi.status() == WL_CONNECTED) return;
@@ -205,30 +186,6 @@ static void mqttPublishDiscovery() {
     "\"unit_of_measurement\":\"%%\",\"device_class\":\"humidity\",\"unique_id\":\"%s_humidity_scd41\"}",
     stateTopic, devId);
   if (!mqtt.publish(topic, payload, true)) return;
-  snprintf(topic, sizeof(topic), "homeassistant/sensor/%s_temp_bme/config", devId);
-  snprintf(payload, sizeof(payload),
-    "{\"name\":\"EnvMon Temp (BME680)\",\"state_topic\":\"%s\",\"value_template\":\"{{ value_json.temperature_bme }}\","
-    "\"unit_of_measurement\":\"°C\",\"device_class\":\"temperature\",\"unique_id\":\"%s_temp_bme\"}",
-    stateTopic, devId);
-  if (!mqtt.publish(topic, payload, true)) return;
-  snprintf(topic, sizeof(topic), "homeassistant/sensor/%s_humidity_bme/config", devId);
-  snprintf(payload, sizeof(payload),
-    "{\"name\":\"EnvMon Humidity (BME680)\",\"state_topic\":\"%s\",\"value_template\":\"{{ value_json.humidity_bme }}\","
-    "\"unit_of_measurement\":\"%%\",\"device_class\":\"humidity\",\"unique_id\":\"%s_humidity_bme\"}",
-    stateTopic, devId);
-  if (!mqtt.publish(topic, payload, true)) return;
-  snprintf(topic, sizeof(topic), "homeassistant/sensor/%s_pressure/config", devId);
-  snprintf(payload, sizeof(payload),
-    "{\"name\":\"EnvMon Pressure\",\"state_topic\":\"%s\",\"value_template\":\"{{ value_json.pressure }}\","
-    "\"unit_of_measurement\":\"hPa\",\"device_class\":\"pressure\",\"unique_id\":\"%s_pressure\"}",
-    stateTopic, devId);
-  if (!mqtt.publish(topic, payload, true)) return;
-  snprintf(topic, sizeof(topic), "homeassistant/sensor/%s_iaq/config", devId);
-  snprintf(payload, sizeof(payload),
-    "{\"name\":\"EnvMon IAQ\",\"state_topic\":\"%s\",\"value_template\":\"{{ value_json.iaq }}\","
-    "\"unique_id\":\"%s_iaq\"}",
-    stateTopic, devId);
-  if (!mqtt.publish(topic, payload, true)) return;
   mqttDiscoveryPublished = true;
   Serial.println(F("MQTT discovery published"));
 }
@@ -250,13 +207,12 @@ static void mqttConnect() {
   } else Serial.println(mqtt.state());
 }
 
-static void mqttPublishState(uint16_t co2, float tScd, float rhScd, float tBme, float rhBme, float p, int iaq) {
+static void mqttPublishState(uint16_t co2, float tScd, float rhScd) {
   if (!mqtt.connected()) return;
-  char payload[220];
+  char payload[120];
   int n = snprintf(payload, sizeof(payload),
-    "{\"co2\":%u,\"temperature_scd41\":%.1f,\"humidity_scd41\":%.1f,"
-    "\"temperature_bme\":%.1f,\"humidity_bme\":%.1f,\"pressure\":%.1f,\"iaq\":%d}",
-    co2, tScd, rhScd, tBme, rhBme, p, iaq);
+    "{\"co2\":%u,\"temperature_scd41\":%.1f,\"humidity_scd41\":%.1f}",
+    co2, tScd, rhScd);
   if (n > 0 && (size_t)n < sizeof(payload))
     mqtt.publish(mqttStateTopic, payload, false);
 }
@@ -291,8 +247,8 @@ static void drawConnectionIndicator(bool wifiOk, bool mqttOk) {
 }
 #endif
 
-// Normal layout: title at top, then SCD41, then BME680 data, countdown at bottom
-static void drawScreen(uint16_t co2, float tScd, float rhScd, float tBme, float rhBme, float p, int iaq, const __FlashStringHelper* iaqLabel, int nextInSec) {
+// Layout: title, CO2 + T/RH (SCD41), countdown
+static void drawScreen(uint16_t co2, float tScd, float rhScd, int nextInSec) {
   gfx->fillScreen(RGB565_BLACK);
   const int marginX = 10;
   const int marginY = 10;
@@ -302,7 +258,7 @@ static void drawScreen(uint16_t co2, float tScd, float rhScd, float tBme, float 
   gfx->setTextColor(RGB565_WHITE, RGB565_BLACK);
   gfx->setTextSize(3);
   gfx->setCursor(marginX, y);
-  gfx->println(F("Env Monitor"));
+  gfx->println(F("CO2 Monitor"));
   y += 24;
 
 #if ENABLE_MQTT
@@ -320,31 +276,9 @@ static void drawScreen(uint16_t co2, float tScd, float rhScd, float tBme, float 
     gfx->setCursor(marginX, y);
     gfx->print(F("T: "));
     gfx->print(tScd, 1);
-    gfx->print(F(" C  RH: "));
+    gfx->print(F(" °C  RH: "));
     gfx->print(rhScd, 1);
     gfx->println(F(" %"));
-    y += lineH;
-  }
-  if (hasBme680) {
-    gfx->setTextColor(RGB565_GREEN, RGB565_BLACK);
-    gfx->setCursor(marginX, y);
-    gfx->print(F("BME T: "));
-    gfx->print(tBme, 1);
-    gfx->print(F(" C  RH: "));
-    gfx->print(rhBme, 1);
-    gfx->println(F(" %"));
-    y += lineH;
-    gfx->setCursor(marginX, y);
-    gfx->print(F("P: "));
-    gfx->print(p, 0);
-    gfx->println(F(" hPa"));
-    y += lineH;
-    gfx->setCursor(marginX, y);
-    gfx->print(F("IAQ: "));
-    gfx->print(iaq);
-    gfx->print(F(" ("));
-    gfx->print(iaqLabel);
-    gfx->println(F(")"));
   }
 
   drawCountdown(nextInSec);
@@ -353,8 +287,8 @@ static void drawScreen(uint16_t co2, float tScd, float rhScd, float tBme, float 
 void setup() {
   Serial.begin(115200);
   delay(1000);
-  Serial.println(F("Environmental monitor — SCD41 + BME680 + LCD"));
-  Serial.println(F("Waiting for sensors (2 s)..."));
+  Serial.println(F("CO2 monitor — SCD41 + LCD"));
+  Serial.println(F("Waiting for sensor (2 s)..."));
   delay(2000);
 
   if (!gfx->begin()) {
@@ -407,38 +341,31 @@ void setup() {
       Serial.print(SCD41_TEMP_OFFSET_C);
       Serial.println(F(" °C"));
     }
-    delay(500);  // let sensor store offset before starting measurement
+#if SCD41_SENSOR_ALTITUDE_M > 0
+    if (scd41.setSensorAltitude(SCD41_SENSOR_ALTITUDE_M) == 0) {
+      Serial.print(F("SCD41: altitude "));
+      Serial.print(SCD41_SENSOR_ALTITUDE_M);
+      Serial.println(F(" m"));
+    }
+#endif
+#if SCD41_PERSIST_SETTINGS
+    if (scd41.persistSettings() == 0) {
+      Serial.println(F("SCD41: settings persisted"));
+      delay(800);  // persist_settings duration per datasheet
+    }
+#endif
+    delay(500);  // let sensor accept config before starting measurement
+#if SCD41_LOW_POWER_PERIODIC
+    if (scd41.startLowPowerPeriodicMeasurement() == 0) {
+      hasScd41 = true;
+      Serial.println(F("SCD41: measuring (low power, ~30 s)."));
+    }
+#else
     if (scd41.startPeriodicMeasurement() == 0) {
       hasScd41 = true;
       Serial.println(F("SCD41: measuring."));
     }
-  }
-
-  Wire.beginTransmission(0x77);
-  if (Wire.endTransmission() != 0) {
-    Serial.println(F("BME680: not found."));
-  } else {
-    bme680.begin(0x77, Wire);
-    bsecSensor requested[] = {
-      BSEC_OUTPUT_IAQ,
-      BSEC_OUTPUT_SENSOR_HEAT_COMPENSATED_TEMPERATURE,
-      BSEC_OUTPUT_SENSOR_HEAT_COMPENSATED_HUMIDITY,
-      BSEC_OUTPUT_RAW_PRESSURE
-    };
-    bme680.updateSubscription(requested, sizeof(requested) / sizeof(requested[0]), BSEC_SAMPLE_RATE_LP);
-    Preferences prefs;
-    if (prefs.begin("bsec", true)) {
-      size_t len = prefs.getBytesLength("state");
-      if (len >= BSEC_MAX_STATE_BLOB_SIZE) {
-        uint8_t stateBuf[BSEC_MAX_STATE_BLOB_SIZE];
-        if (prefs.getBytes("state", stateBuf, BSEC_MAX_STATE_BLOB_SIZE) == BSEC_MAX_STATE_BLOB_SIZE && bme680.setState(stateBuf)) {
-          Serial.println(F("BME680+BSEC: state restored."));
-        }
-      }
-      prefs.end();
-    }
-    hasBme680 = true;
-    Serial.println(F("BME680+BSEC: initialized. (IAQ may need 10–30 min burn-in)"));
+#endif
   }
 }
 
@@ -453,17 +380,9 @@ void loop() {
   static uint16_t lastCo2 = 0;
   static float lastTScd = 0, lastRhScd = 0;
   static bool haveValidScd41 = false;
-  static float lastTBme = 0, lastRhBme = 0, lastP = 0;
-  static int lastIaq = 0;
-  static const __FlashStringHelper* lastIaqLabel = F("—");
-  static bool haveValidBme = false;
-  static uint8_t cycleCount = 0;
 
   uint16_t co2 = lastCo2;
   float tScd = lastTScd, rhScd = lastRhScd;
-  float tBme = lastTBme, rhBme = lastRhBme, p = lastP;
-  int iaq = lastIaq;
-  const __FlashStringHelper* iaqLabel = lastIaqLabel;
 
   if (hasScd41) {
     bool dataReady = false;
@@ -501,59 +420,19 @@ void loop() {
     }
   }
 
-  if (hasBme680) {
-    if (bme680.run()) {
-      float t = bme680.getData(BSEC_OUTPUT_SENSOR_HEAT_COMPENSATED_TEMPERATURE).signal;
-      float rh = bme680.getData(BSEC_OUTPUT_SENSOR_HEAT_COMPENSATED_HUMIDITY).signal;
-      float pPa = bme680.getData(BSEC_OUTPUT_RAW_PRESSURE).signal;
-      float iaqF = bme680.getData(BSEC_OUTPUT_IAQ).signal;
-      if (bmeValuesValid(t, rh, pPa / 100.0f, iaqF)) {
-        tBme = lastTBme = t;
-        rhBme = lastRhBme = rh;
-        p = lastP = pPa / 100.0f;
-        iaq = lastIaq = (int)iaqF;
-        iaqLabel = lastIaqLabel = bsecIAQLabel(iaqF);
-        haveValidBme = true;
-        Serial.print(F("BME680+BSEC — T: "));
-        Serial.print(tBme, 1);
-        Serial.print(F(" °C  RH: "));
-        Serial.print(rhBme, 1);
-        Serial.print(F(" %  P: "));
-        Serial.print(p, 1);
-        Serial.print(F(" hPa  IAQ: "));
-        Serial.print(iaq);
-        Serial.print(F(" ("));
-        Serial.print(iaqLabel);
-        Serial.println(F(")"));
-      }
-    }
-  }
-
-  if (hasScd41 || hasBme680) {
+  if (hasScd41) {
 #if ENABLE_MQTT
     mqttConnect();
-    mqttPublishState(co2, tScd, rhScd, tBme, rhBme, p, iaq);
+    mqttPublishState(co2, tScd, rhScd);
 #endif
-    drawScreen(co2, tScd, rhScd, tBme, rhBme, p, iaq, iaqLabel, MEASURE_INTERVAL_SEC);
-    cycleCount++;
+    drawScreen(co2, tScd, rhScd, MEASURE_INTERVAL_SEC);
     for (int s = MEASURE_INTERVAL_SEC - 1; s >= 0; s--) {
-      if (hasBme680) bme680.run();
 #if ENABLE_MQTT
       mqtt.loop();
       drawConnectionIndicator(WiFi.status() == WL_CONNECTED, mqtt.connected());
 #endif
       drawCountdown(s);
       delay(1000);
-    }
-    if (hasBme680 && haveValidBme && (cycleCount % BSEC_STATE_SAVE_INTERVAL_CYCLES) == 0) {
-      uint8_t stateBuf[BSEC_MAX_STATE_BLOB_SIZE];
-      if (bme680.getState(stateBuf)) {
-        Preferences prefs;
-        if (prefs.begin("bsec", false)) {
-          prefs.putBytes("state", stateBuf, BSEC_MAX_STATE_BLOB_SIZE);
-          prefs.end();
-        }
-      }
     }
   } else {
     delay(5000);
