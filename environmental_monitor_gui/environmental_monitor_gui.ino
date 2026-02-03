@@ -464,9 +464,6 @@ void loop() {
       tScd = lastTScd;
       rhScd = lastRhScd;
     } else {
-      rhScd += SCD41_HUMIDITY_OFFSET;
-      if (rhScd < 0.0f) rhScd = 0.0f;
-      if (rhScd > 100.0f) rhScd = 100.0f;
       lastCo2 = co2;
       lastTScd = tScd;
       lastRhScd = rhScd;

@@ -11,9 +11,8 @@
 
 /** Temperature and humidity reference: BME680 (raw values; no calibration). SCD41 T/RH for comparison only. */
 
-/** SCD41: chip temperature offset (0–20 °C per datasheet); 0 = no correction. RH offset: software only, 0 = no correction. */
-#define SCD41_TEMP_OFFSET_C (0.0f)
-#define SCD41_HUMIDITY_OFFSET (0.0f)
+/** SCD41: chip temperature offset (0–20 °C per datasheet). Chip automatically recalculates RH from corrected T. */
+#define SCD41_TEMP_OFFSET_C (3.0f)
 
 /** BME680 = T/H reference. Add to raw reading; 0 = use sensor values as-is. */
 #define BME680_TEMP_OFFSET_C   (0.0f)
