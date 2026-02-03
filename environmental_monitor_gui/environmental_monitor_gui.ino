@@ -5,9 +5,21 @@
  */
 #include <Wire.h>
 #include <SensirionI2cScd4x.h>
-#include <Adafruit_BME680.h>
+#include <bsec2.h>
 #include <Arduino_GFX_Library.h>
+#include <Preferences.h>
 #include "config.h"
+
+#if ENABLE_SD
+#include <SD.h>
+#include <SPI.h>
+#endif
+
+#define BSEC_STATE_SAVE_INTERVAL_CYCLES 10
+#define BSEC_STATE_FILENAME "/bsec_state.bin"   /* save BSEC state every N measurement cycles to limit flash wear */
+#ifndef BSEC_MAX_STATE_BLOB_SIZE
+#define BSEC_MAX_STATE_BLOB_SIZE 256
+#endif
 
 #if ENABLE_MQTT
 #include <WiFi.h>
@@ -21,7 +33,7 @@ Arduino_GFX *gfx = new Arduino_ST7789(
   TFT_COL_OFFSET, TFT_ROW_OFFSET, TFT_COL_OFFSET, TFT_ROW_OFFSET);
 
 SensirionI2cScd4x scd41;
-Adafruit_BME680 bme;
+Bsec2 bme680;
 
 #if ENABLE_MQTT
 WiFiClient wifiClient;
@@ -32,6 +44,9 @@ static bool mqttDiscoveryPublished = false;
 
 bool hasScd41 = false;
 bool hasBme680 = false;
+#if ENABLE_SD
+bool hasSd = false;
+#endif
 
 // Release I2C bus if a slave is holding SDA/SCL after master reset
 static void i2cBusRecovery() {
@@ -147,16 +162,20 @@ static void lcd_reg_init(void) {
   bus->batchOperation(init_operations, sizeof(init_operations));
 }
 
-static void bme680IAQ(uint32_t gasOhm, int& iaq, const __FlashStringHelper*& label) {
-  iaq = (gasOhm <= IAQ_R_MIN) ? 500 : (gasOhm >= IAQ_R_MAX) ? 0
-      : (int)(500 - (long)(gasOhm - IAQ_R_MIN) * 500 / (long)(IAQ_R_MAX - IAQ_R_MIN));
-  iaq = (iaq < 0) ? 0 : (iaq > 500) ? 500 : iaq;
-  if (iaq <= 50)       label = F("Excellent");
-  else if (iaq <= 100) label = F("Good");
-  else if (iaq <= 150) label = F("Lightly polluted");
-  else if (iaq <= 200) label = F("Moderately polluted");
-  else if (iaq <= 300) label = F("Heavily polluted");
-  else                 label = F("Severely polluted");
+// BSEC IAQ classification (official Bosch bands)
+static const __FlashStringHelper* bsecIAQLabel(float iaq) {
+  if (iaq <= 50)       return F("Excellent");
+  if (iaq <= 100)      return F("Good");
+  if (iaq <= 150)      return F("Lightly polluted");
+  if (iaq <= 200)      return F("Moderately polluted");
+  if (iaq <= 300)      return F("Heavily polluted");
+  return F("Severely polluted");
+}
+
+// BME680/BSEC output sanity (datasheet ranges). Returns true if valid.
+static bool bmeValuesValid(float t, float rh, float p, float iaq) {
+  return (t >= -40.0f && t <= 85.0f && rh >= 0.0f && rh <= 100.0f &&
+          p >= 300.0f && p <= 1100.0f && iaq >= 0.0f && iaq <= 500.0f);
 }
 
 #if ENABLE_MQTT
@@ -376,6 +395,12 @@ void setup() {
   Wire.begin(I2C_SDA_GPIO, I2C_SCL_GPIO);
   delay(200);
 
+#if ENABLE_SD
+  hasSd = SD.begin(SD_CS, SPI, 4000000, "/sd");
+  if (hasSd) Serial.println(F("SD: OK"));
+  else Serial.println(F("SD: not found or init failed"));
+#endif
+
   scd41.begin(Wire, 0x62);
   delay(200);
   scd41.stopPeriodicMeasurement();
@@ -410,17 +435,43 @@ void setup() {
     }
   }
 
-  if (!bme.begin(0x77)) {
+  Wire.beginTransmission(0x77);
+  if (Wire.endTransmission() != 0) {
     Serial.println(F("BME680: not found."));
   } else {
+    bme680.begin(0x77, Wire);
+    bsec_sensor_configuration_t sensorSettings[BSEC_NUMBER_OUTPUTS];
+    uint8_t nSensorSettings = BSEC_NUMBER_OUTPUTS;
+    bme680.updateSubscription(sensorSettings, nSensorSettings);
+    bool stateRestored = false;
+#if ENABLE_SD
+    if (hasSd && SD.exists(BSEC_STATE_FILENAME)) {
+      File f = SD.open(BSEC_STATE_FILENAME, FILE_READ);
+      if (f && f.size() > 0 && f.size() <= BSEC_MAX_STATE_BLOB_SIZE) {
+        uint8_t stateBuf[BSEC_MAX_STATE_BLOB_SIZE];
+        if (f.read(stateBuf, f.size()) == (int)f.size() && bme680.setState(stateBuf, f.size())) {
+          stateRestored = true;
+        }
+        f.close();
+      }
+    }
+#endif
+    if (!stateRestored) {
+      Preferences prefs;
+      if (prefs.begin("bsec", true)) {
+        size_t len = prefs.getBytesLength("state");
+        if (len > 0 && len <= BSEC_MAX_STATE_BLOB_SIZE) {
+          uint8_t stateBuf[BSEC_MAX_STATE_BLOB_SIZE];
+          if (prefs.getBytes("state", stateBuf, len) == len && bme680.setState(stateBuf, len)) {
+            stateRestored = true;
+          }
+        }
+        prefs.end();
+      }
+    }
+    if (stateRestored) Serial.println(F("BME680+BSEC: state restored."));
     hasBme680 = true;
-    // Bosch recommends osrs_h then osrs_t then osrs_p (Section 3.2.1); IIR filters T and P only
-    bme.setHumidityOversampling(BME680_OS_2X);
-    bme.setTemperatureOversampling(BME680_OS_8X);
-    bme.setPressureOversampling(BME680_OS_4X);
-    bme.setIIRFilterSize(BME680_FILTER_SIZE_3);
-    bme.setGasHeater(320, 150);  // 320°C, 150 ms — standard for indoor IAQ
-    Serial.println(F("BME680: ok. (IAQ may need 10–30 min burn-in to stabilize)"));
+    Serial.println(F("BME680+BSEC: initialized. (IAQ may need 10–30 min burn-in)"));
   }
 }
 
@@ -435,12 +486,17 @@ void loop() {
   static uint16_t lastCo2 = 0;
   static float lastTScd = 0, lastRhScd = 0;
   static bool haveValidScd41 = false;
+  static float lastTBme = 0, lastRhBme = 0, lastP = 0;
+  static int lastIaq = 0;
+  static const __FlashStringHelper* lastIaqLabel = F("—");
+  static bool haveValidBme = false;
+  static uint8_t cycleCount = 0;
 
   uint16_t co2 = lastCo2;
   float tScd = lastTScd, rhScd = lastRhScd;
-  float tBme = 0, rhBme = 0, p = 0;
-  int iaq = 0;
-  const __FlashStringHelper* iaqLabel = F("—");
+  float tBme = lastTBme, rhBme = lastRhBme, p = lastP;
+  int iaq = lastIaq;
+  const __FlashStringHelper* iaqLabel = lastIaqLabel;
 
   if (hasScd41) {
     bool dataReady = false;
@@ -478,23 +534,32 @@ void loop() {
     }
   }
 
-  if (hasBme680 && bme.performReading()) {
-    tBme = bme.temperature + BME680_TEMP_OFFSET_C;
-    rhBme = bme.humidity + BME680_HUMIDITY_OFFSET;
-    if (rhBme < 0.0f) rhBme = 0.0f;
-    if (rhBme > 100.0f) rhBme = 100.0f;
-    p = bme.pressure / 100.0f;
-    bme680IAQ(bme.gas_resistance, iaq, iaqLabel);
-    Serial.print(F("BME680 — T: "));
-    Serial.print(tBme, 1);
-    Serial.print(F(" °C  RH: "));
-    Serial.print(rhBme, 1);
-    Serial.print(F(" %  P: "));
-    Serial.print(p, 1);
-    Serial.print(F(" hPa  IAQ: "));
-    Serial.print(iaq);
-    Serial.print(F(" "));
-    Serial.println(iaqLabel);
+  if (hasBme680) {
+    if (bme680.run()) {
+      float t = bme680.temperature;
+      float rh = bme680.humidity;
+      float pPa = bme680.pressure;
+      float iaqF = bme680.iaq;
+      if (bmeValuesValid(t, rh, pPa / 100.0f, iaqF)) {
+        tBme = lastTBme = t;
+        rhBme = lastRhBme = rh;
+        p = lastP = pPa / 100.0f;
+        iaq = lastIaq = (int)iaqF;
+        iaqLabel = lastIaqLabel = bsecIAQLabel(iaqF);
+        haveValidBme = true;
+        Serial.print(F("BME680+BSEC — T: "));
+        Serial.print(tBme, 1);
+        Serial.print(F(" °C  RH: "));
+        Serial.print(rhBme, 1);
+        Serial.print(F(" %  P: "));
+        Serial.print(p, 1);
+        Serial.print(F(" hPa  IAQ: "));
+        Serial.print(iaq);
+        Serial.print(F(" ("));
+        Serial.print(iaqLabel);
+        Serial.println(F(")"));
+      }
+    }
   }
 
   if (hasScd41 || hasBme680) {
@@ -503,13 +568,34 @@ void loop() {
     mqttPublishState(co2, tScd, rhScd, tBme, rhBme, p, iaq);
 #endif
     drawScreen(co2, tScd, rhScd, tBme, rhBme, p, iaq, iaqLabel, MEASURE_INTERVAL_SEC);
+    cycleCount++;
     for (int s = MEASURE_INTERVAL_SEC - 1; s >= 0; s--) {
+      if (hasBme680) bme680.run();
 #if ENABLE_MQTT
       mqtt.loop();
       drawConnectionIndicator(WiFi.status() == WL_CONNECTED, mqtt.connected());
 #endif
       drawCountdown(s);
       delay(1000);
+    }
+    if (hasBme680 && haveValidBme && (cycleCount % BSEC_STATE_SAVE_INTERVAL_CYCLES) == 0) {
+      uint8_t stateBuf[BSEC_MAX_STATE_BLOB_SIZE];
+      size_t len = bme680.getState(stateBuf);
+      if (len > 0) {
+#if ENABLE_SD
+        if (hasSd) {
+          File f = SD.open(BSEC_STATE_FILENAME, FILE_WRITE);
+          if (f && f.write(stateBuf, len) == (int)len) f.close();
+        } else
+#endif
+        {
+          Preferences prefs;
+          if (prefs.begin("bsec", false)) {
+            prefs.putBytes("state", stateBuf, len);
+            prefs.end();
+          }
+        }
+      }
     }
   } else {
     delay(5000);

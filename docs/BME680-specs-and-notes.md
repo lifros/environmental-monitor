@@ -41,7 +41,7 @@ Source: [BME680 Datasheet](https://www.bosch-sensortec.com/media/boschsensortec/
 | Absolute accuracy | 25°C | ±0.5°C |
 | | 0–65°C | ±1.0°C |
 
-*Datasheet footnote: “Temperature measured by the internal temperature sensor … is **typically above ambient temperature**” (PCB and self-heating). There is **no software temperature-offset command** in the BME680 register map; BSEC compensates ambient T in their closed-source stack. The project optionally applies **software calibration** in firmware (*BME680_TEMP_OFFSET_C*, *BME680_HUMIDITY_OFFSET* in `config.h`): added to the raw reading, then RH clamped to 0–100%. This is user calibration to match a reference (e.g. another sensor); it does not change the sensor’s operating range or violate specs.*
+*Datasheet footnote: “Temperature measured by the internal temperature sensor … is **typically above ambient temperature**” (PCB and self-heating). There is **no software temperature-offset command** in the BME680 register map; **BSEC compensates ambient T** in their closed-source stack. This project uses BSEC for compensated outputs (see Section 3.1).*
 
 ---
 
@@ -80,6 +80,30 @@ The Adafruit BME680 library does not expose these bits in the high-level API; fo
 
 ---
 
+## 3.1 Using BSEC (Bosch Software Environmental Cluster)
+
+BSEC can be integrated so that the BME680 provides Bosch’s official compensated outputs:
+
+- **Compensated ambient temperature** (reduces self-heating bias; no need for manual T offset).
+- **Official IAQ index** 0–500 and classification (Excellent / Good / …).
+- **Improved humidity** (used internally by BSEC).
+
+**Libraries (Arduino):**
+
+- **BSEC (v1):** [BSEC-Arduino-library](https://github.com/BoschSensortec/BSEC-Arduino-library) — supports ESP32, ESP8266, etc. Install via Arduino Library Manager (“BSEC Software Library”) or GitHub. Requires accepting Bosch’s license when downloading the library.
+- **BSEC2 (newer):** [Bosch-BSEC2-Library](https://github.com/boschsensortec/Bosch-BSEC2-Library) — BSEC v2.x; [Arduino docs](https://docs.arduino.cc/libraries/bsec2/). Check compatibility with ESP32-C6.
+
+**What integration implies:**
+
+- Replace **Adafruit BME680** with the **BSEC** (or BSEC2) API for the BME680: different init, read, and output (e.g. `bsec_get_*` or equivalent). SCD41 and display/MQTT code stay as-is; only the BME680 driver and the way T/RH/P/IAQ are read and displayed change.
+- **License:** Bosch’s BSEC is proprietary; use is subject to their terms (see library repo and Bosch Sensortec site).
+- **State:** BSEC may require saving/restoring state (e.g. in NVS/EEPROM) for best IAQ accuracy across power cycles.
+- **Resources:** Slightly higher RAM/Flash than the Adafruit driver; verify on ESP32-C6.
+
+So: **yes, BSEC can be implemented** by switching the BME680 driver to the official BSEC (or BSEC2) library and adapting the sketch accordingly; the documentation above is the reference for doing that.
+
+---
+
 ## 4. Summary of possible improvements
 
 | Item | Datasheet / note | Project action |
@@ -88,4 +112,4 @@ The Adafruit BME680 library does not expose these bits in the high-level API; fo
 | Pressure oversampling | Quick start uses 16x | We use 4x; 16x improves pressure noise, increases measurement time. |
 | Heater 300 vs 320°C | Quick start 300°C 100 ms | We use 320°C 150 ms; both valid; 300/100 saves a little power. |
 | heat_stab_r / gas_valid_r | Check for reliable gas reading | Not exposed by Adafruit API; optional custom read for production. |
-| BME680 T above ambient | No offset in register map | Optional software offset in `config.h` (BME680_TEMP_OFFSET_C, BME680_HUMIDITY_OFFSET) to match a reference; RH clamped 0–100%. |
+| BME680 T above ambient | No offset in register map | BSEC compensates ambient T (Section 3.1). |

@@ -9,18 +9,11 @@
 #define I2C_SDA_GPIO 18
 #define I2C_SCL_GPIO 19
 
-/** Temperature and humidity reference: BME680 (raw values; no calibration). SCD41 T/RH for comparison only. */
+/** Temperature and humidity reference: BME680 (with BSEC). SCD41 T/RH for comparison only. */
 
 /** SCD41: chip temperature offset (0–20 °C per datasheet). Chip automatically recalculates RH from corrected T. */
 #define SCD41_TEMP_OFFSET_C (3.0f)
 
-/** BME680 = T/H reference. Add to raw reading; 0 = use sensor values as-is. */
-#define BME680_TEMP_OFFSET_C   (0.0f)
-#define BME680_HUMIDITY_OFFSET  (0.0f)
-
-/** BME680 IAQ: gas resistance (ohm). R < R_MIN = worst, R > R_MAX = best. Tune after 10–30 min burn-in. */
-#define IAQ_R_MIN 5000
-#define IAQ_R_MAX 60000
 #define MEASURE_INTERVAL_SEC 60
 
 #define TFT_CS   14
@@ -35,6 +28,10 @@
 #define TFT_COL_OFFSET 34
 #define TFT_ROW_OFFSET 0
 #define TFT_ROTATION 3
+
+/* SD card (same SPI as TFT). PINOUT: GPIO4 = SD_CS, MISO=3, MOSI=2, SCK=1. BSEC state saved here when available to reduce NVS wear. */
+#define ENABLE_SD 1
+#define SD_CS 4
 
 /* WiFi + MQTT (Home Assistant). Set ENABLE_MQTT 0 to disable.
  * Library: PubSubClient (Nick O'Leary) or PubSubClient3 (Holger Mueller); both use PubSubClient.h */

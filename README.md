@@ -36,6 +36,8 @@ Data is shown on a touch LCD and can be used for logging or automation.
   - **Adafruit BME680** (installs Adafruit Unified Sensor and BusIO as dependencies)
   - **Arduino_GFX_Library** (GUI sketch: 172×320 display with official board init; install from Library Manager)
   - **PubSubClient** (Nick O'Leary) or **PubSubClient3** (Holger Mueller) — required only for GUI sketch if MQTT is enabled (see [docs/HA-integration.md](docs/HA-integration.md))
+  - **BSEC2** (Bosch Sensortec) — for BME680 compensated T/RH/P and official IAQ (GUI sketch). Accept Bosch license when prompted.
+  - **SD** (built-in with Arduino ESP32) — used by GUI sketch when `ENABLE_SD` is set and a TF/SD card is present; BSEC state is saved to the card to reduce internal flash wear.
 - **Pinout**: See [PINOUT.md](PINOUT.md). I²C: SDA/SCL on right header. GUI sketch: TFT pins in `environmental_monitor_gui/config.h` (verify from board schematic).
 - **Home Assistant**: GUI sketch supports **WiFi + MQTT** (Arduino); Zigbee requires ESP-IDF. See [docs/HA-integration.md](docs/HA-integration.md) and [environmental_monitor_zigbee_espidf/](environmental_monitor_zigbee_espidf/).
 
@@ -69,7 +71,7 @@ With only the board connected: 2 devices (0x63, 0x6B). With SCD41 and BME680 on 
 - `docs/SCD41-specs-and-compensation.md` — SCD41 specs and T/RH compensation procedure
 - `docs/BME680-specs-and-notes.md` — BME680 specs and configuration notes (oversampling, heater, IAQ)
 - `environmental_monitor_console/` — Serial-only sketch (SCD41 + BME680, IAQ); `config.h` has I²C pins and IAQ range
-- `environmental_monitor_gui/` — Same sensors + LCD (172×320, Arduino_GFX_Library, official init); optional WiFi+MQTT for Home Assistant; `config.h` has I²C, IAQ, TFT, and MQTT settings
+- `environmental_monitor_gui/` — Same sensors + LCD (172×320), BME680+BSEC2, optional SD for BSEC state, optional WiFi+MQTT; `config.h` has I²C, TFT, SD, and MQTT settings
 - `environmental_monitor_zigbee_espidf/` — README and outline for Zigbee via ESP-IDF (Home Assistant)
 - `i2c_scanner/` — I2C bus scanner sketch
 - `docs/HA-integration.md` — Home Assistant via WiFi+MQTT (Arduino GUI) or Zigbee (ESP-IDF)
