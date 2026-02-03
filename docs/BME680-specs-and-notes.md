@@ -80,7 +80,7 @@ The Adafruit BME680 library does not expose these bits in the high-level API; fo
 
 ---
 
-## 3.1 Using BSEC (Bosch Software Environmental Cluster)
+## 3.1 Using BSEC (Bosch Software Environmental Cluster) — not on ESP32-C6
 
 BSEC can be integrated so that the BME680 provides Bosch’s official compensated outputs:
 
@@ -100,7 +100,7 @@ BSEC can be integrated so that the BME680 provides Bosch’s official compensate
 - **State:** BSEC may require saving/restoring state (e.g. in NVS/EEPROM) for best IAQ accuracy across power cycles.
 - **Resources:** Slightly higher RAM/Flash than the Adafruit driver; verify on ESP32-C6.
 
-So: **yes, BSEC can be implemented** by switching the BME680 driver to the official BSEC (or BSEC2) library and adapting the sketch accordingly; the documentation above is the reference for doing that.
+So: **yes, BSEC can be implemented** on boards for which Bosch provides precompiled binaries (e.g. ESP32 classic, ESP32-S3). **ESP32-C6 is not supported**: the BSEC2 library declares a precompiled binary for `esp32c6` but does not ship it, so linking fails. This project uses **Adafruit BME680** with a simple gas-resistance→IAQ mapping (IAQ_R_MIN, IAQ_R_MAX) on ESP32-C6.
 
 ---
 

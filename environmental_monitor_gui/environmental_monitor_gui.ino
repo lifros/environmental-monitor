@@ -10,17 +10,6 @@
 #include <Preferences.h>
 #include "config.h"
 
-#if ENABLE_SD
-#include <SD.h>
-#include <SPI.h>
-#endif
-
-#define BSEC_STATE_SAVE_INTERVAL_CYCLES 10
-#define BSEC_STATE_FILENAME "/bsec_state.bin"   /* save BSEC state every N measurement cycles to limit flash wear */
-#ifndef BSEC_MAX_STATE_BLOB_SIZE
-#define BSEC_MAX_STATE_BLOB_SIZE 256
-#endif
-
 #if ENABLE_MQTT
 #include <WiFi.h>
 #include <PubSubClient.h>
@@ -44,9 +33,6 @@ static bool mqttDiscoveryPublished = false;
 
 bool hasScd41 = false;
 bool hasBme680 = false;
-#if ENABLE_SD
-bool hasSd = false;
-#endif
 
 // Release I2C bus if a slave is holding SDA/SCL after master reset
 static void i2cBusRecovery() {
@@ -172,7 +158,6 @@ static const __FlashStringHelper* bsecIAQLabel(float iaq) {
   return F("Severely polluted");
 }
 
-// BME680/BSEC output sanity (datasheet ranges). Returns true if valid.
 static bool bmeValuesValid(float t, float rh, float p, float iaq) {
   return (t >= -40.0f && t <= 85.0f && rh >= 0.0f && rh <= 100.0f &&
           p >= 300.0f && p <= 1100.0f && iaq >= 0.0f && iaq <= 500.0f);
@@ -395,12 +380,6 @@ void setup() {
   Wire.begin(I2C_SDA_GPIO, I2C_SCL_GPIO);
   delay(200);
 
-#if ENABLE_SD
-  hasSd = SD.begin(SD_CS, SPI, 4000000, "/sd");
-  if (hasSd) Serial.println(F("SD: OK"));
-  else Serial.println(F("SD: not found or init failed"));
-#endif
-
   scd41.begin(Wire, 0x62);
   delay(200);
   scd41.stopPeriodicMeasurement();
@@ -440,36 +419,24 @@ void setup() {
     Serial.println(F("BME680: not found."));
   } else {
     bme680.begin(0x77, Wire);
-    bsec_sensor_configuration_t sensorSettings[BSEC_NUMBER_OUTPUTS];
-    uint8_t nSensorSettings = BSEC_NUMBER_OUTPUTS;
-    bme680.updateSubscription(sensorSettings, nSensorSettings);
-    bool stateRestored = false;
-#if ENABLE_SD
-    if (hasSd && SD.exists(BSEC_STATE_FILENAME)) {
-      File f = SD.open(BSEC_STATE_FILENAME, FILE_READ);
-      if (f && f.size() > 0 && f.size() <= BSEC_MAX_STATE_BLOB_SIZE) {
+    bsecSensor requested[] = {
+      BSEC_OUTPUT_IAQ,
+      BSEC_OUTPUT_SENSOR_HEAT_COMPENSATED_TEMPERATURE,
+      BSEC_OUTPUT_SENSOR_HEAT_COMPENSATED_HUMIDITY,
+      BSEC_OUTPUT_RAW_PRESSURE
+    };
+    bme680.updateSubscription(requested, sizeof(requested) / sizeof(requested[0]), BSEC_SAMPLE_RATE_LP);
+    Preferences prefs;
+    if (prefs.begin("bsec", true)) {
+      size_t len = prefs.getBytesLength("state");
+      if (len >= BSEC_MAX_STATE_BLOB_SIZE) {
         uint8_t stateBuf[BSEC_MAX_STATE_BLOB_SIZE];
-        if (f.read(stateBuf, f.size()) == (int)f.size() && bme680.setState(stateBuf, f.size())) {
-          stateRestored = true;
+        if (prefs.getBytes("state", stateBuf, BSEC_MAX_STATE_BLOB_SIZE) == BSEC_MAX_STATE_BLOB_SIZE && bme680.setState(stateBuf)) {
+          Serial.println(F("BME680+BSEC: state restored."));
         }
-        f.close();
       }
+      prefs.end();
     }
-#endif
-    if (!stateRestored) {
-      Preferences prefs;
-      if (prefs.begin("bsec", true)) {
-        size_t len = prefs.getBytesLength("state");
-        if (len > 0 && len <= BSEC_MAX_STATE_BLOB_SIZE) {
-          uint8_t stateBuf[BSEC_MAX_STATE_BLOB_SIZE];
-          if (prefs.getBytes("state", stateBuf, len) == len && bme680.setState(stateBuf, len)) {
-            stateRestored = true;
-          }
-        }
-        prefs.end();
-      }
-    }
-    if (stateRestored) Serial.println(F("BME680+BSEC: state restored."));
     hasBme680 = true;
     Serial.println(F("BME680+BSEC: initialized. (IAQ may need 10–30 min burn-in)"));
   }
@@ -536,10 +503,10 @@ void loop() {
 
   if (hasBme680) {
     if (bme680.run()) {
-      float t = bme680.temperature;
-      float rh = bme680.humidity;
-      float pPa = bme680.pressure;
-      float iaqF = bme680.iaq;
+      float t = bme680.getData(BSEC_OUTPUT_SENSOR_HEAT_COMPENSATED_TEMPERATURE).signal;
+      float rh = bme680.getData(BSEC_OUTPUT_SENSOR_HEAT_COMPENSATED_HUMIDITY).signal;
+      float pPa = bme680.getData(BSEC_OUTPUT_RAW_PRESSURE).signal;
+      float iaqF = bme680.getData(BSEC_OUTPUT_IAQ).signal;
       if (bmeValuesValid(t, rh, pPa / 100.0f, iaqF)) {
         tBme = lastTBme = t;
         rhBme = lastRhBme = rh;
@@ -580,20 +547,11 @@ void loop() {
     }
     if (hasBme680 && haveValidBme && (cycleCount % BSEC_STATE_SAVE_INTERVAL_CYCLES) == 0) {
       uint8_t stateBuf[BSEC_MAX_STATE_BLOB_SIZE];
-      size_t len = bme680.getState(stateBuf);
-      if (len > 0) {
-#if ENABLE_SD
-        if (hasSd) {
-          File f = SD.open(BSEC_STATE_FILENAME, FILE_WRITE);
-          if (f && f.write(stateBuf, len) == (int)len) f.close();
-        } else
-#endif
-        {
-          Preferences prefs;
-          if (prefs.begin("bsec", false)) {
-            prefs.putBytes("state", stateBuf, len);
-            prefs.end();
-          }
+      if (bme680.getState(stateBuf)) {
+        Preferences prefs;
+        if (prefs.begin("bsec", false)) {
+          prefs.putBytes("state", stateBuf, BSEC_MAX_STATE_BLOB_SIZE);
+          prefs.end();
         }
       }
     }
