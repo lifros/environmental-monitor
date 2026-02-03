@@ -42,6 +42,8 @@ This project focuses on **CO2** (ppm) from the Sensirion SCD41. The SCD41 also p
 6. **Tools → Serial Monitor** at 115200 baud to see sensor output.
 7. Connect SCD41 to the board I²C (SDA, SCL) and 3V3/GND. If the sensor is not found, check I²C pins in `config.h` against the board schematic.
 
+**OTA (Over-The-Air)**: With WiFi and MQTT enabled, set `ENABLE_OTA 1` in `config.h`. After the first USB upload, the device appears in **Tools → Port** as *envmon_gui at 192.168.x.x*. Select that port and upload to update firmware without USB.
+
 ## I2C addresses (verified with project scanner)
 
 | Address | Device |

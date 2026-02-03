@@ -49,4 +49,11 @@
 #define MQTT_PASSWORD "30Ott2008!"
 #define MQTT_DEVICE_ID "envmon_gui"     /* used in topic and HA entity_id prefix */
 
+/* OTA (Over-The-Air) update. Requires WiFi: keep ENABLE_MQTT 1 so WiFi connects and OTA can run. Set ENABLE_OTA 0 to disable.
+ * In Arduino IDE: Tools → Port → "envmon_gui at 192.168.x.x" (device appears when running).
+ * Partition scheme must allow OTA (e.g. "Default 4MB with spiffs" has two app slots). */
+#define ENABLE_OTA 1
+#define OTA_HOSTNAME "envmon_gui"      /* hostname for mDNS; use same as MQTT_DEVICE_ID if you like */
+#define OTA_PASSWORD ""                /* optional; leave "" for no auth */
+
 #endif

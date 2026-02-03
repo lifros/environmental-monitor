@@ -12,6 +12,9 @@
 #include <WiFi.h>
 #include <PubSubClient.h>
 #endif
+#if ENABLE_OTA
+#include <ArduinoOTA.h>
+#endif
 
 Arduino_DataBus *bus = new Arduino_HWSPI(TFT_DC, TFT_CS, TFT_SCK, TFT_MOSI);
 Arduino_GFX *gfx = new Arduino_ST7789(
@@ -218,70 +221,111 @@ static void mqttPublishState(uint16_t co2, float tScd, float rhScd) {
 }
 #endif
 
-// Redraw only the countdown line (uses current rotation: bottom of visible area)
-static void drawCountdown(int secondsLeft) {
+// CO2 quality bands (indoor air): label and color for status line
+static void getCo2Quality(uint16_t ppm, const char*& label, uint16_t& color) {
+  if (ppm <= 800)       { label = "Good";      color = (uint16_t)0x07E0; }
+  else if (ppm <= 1000) { label = "Moderate";  color = (uint16_t)0xFFE0; }
+  else if (ppm <= 2000) { label = "Poor";      color = (uint16_t)0xFD20; }
+  else                  { label = "Unhealthy"; color = (uint16_t)0xF800; }
+}
+
+// Redraw only the countdown bar at bottom (progress + seconds)
+static void drawCountdown(int secondsLeft, int totalSec) {
   const int h = 24;
-  const int countdownY = gfx->height() - h;
-  gfx->fillRect(0, countdownY, gfx->width(), h, RGB565_BLACK);
+  const int y0 = gfx->height() - h;
+  const int w = gfx->width();
+  gfx->fillRect(0, y0, w, h, RGB565_BLACK);
+  // Progress bar: filled portion = (totalSec - secondsLeft) / totalSec
+  if (totalSec > 0) {
+    const int barW = w - 4;
+    const int filled = (int)((long)(totalSec - secondsLeft) * barW / totalSec);
+    if (filled > 0)
+      gfx->fillRect(2, y0 + 8, filled, 10, (uint16_t)0x3186);
+    gfx->drawRect(2, y0 + 8, barW, 10, (uint16_t)0x4A49);
+  }
   gfx->setTextSize(2);
   gfx->setTextColor(RGB565_YELLOW, RGB565_BLACK);
-  gfx->setCursor(10, countdownY);
-  gfx->print(F("Next in: "));
+  gfx->setCursor(4, y0 + 2);
   gfx->print(secondsLeft);
-  gfx->println(F(" s"));
+  gfx->print(F(" s"));
 }
 
 #if ENABLE_MQTT
-// WiFi/MQTT status icon: top-right corner. Green = both connected, yellow = WiFi only, gray = disconnected.
+// WiFi/MQTT status: top-right. Green = both, yellow = WiFi only, gray = off.
 static void drawConnectionIndicator(bool wifiOk, bool mqttOk) {
-  const int boxW = 24;
-  const int boxH = 24;
-  const int x0 = gfx->width() - boxW - 6;
-  const int y0 = 6;
+  const int boxW = 22;
+  const int boxH = 22;
+  const int x0 = gfx->width() - boxW - 4;
+  const int y0 = 4;
   const int cx = x0 + boxW / 2;
   const int cy = y0 + boxH / 2;
-  const int r = 8;
+  const int r = 7;
   gfx->fillRect(x0, y0, boxW, boxH, RGB565_BLACK);
-  uint16_t color = mqttOk ? RGB565_GREEN : (wifiOk ? RGB565_YELLOW : (uint16_t)0x3186);  /* dark gray */
+  uint16_t color = mqttOk ? (uint16_t)0x07E0 : (wifiOk ? (uint16_t)0xFFE0 : (uint16_t)0x3186);
   gfx->fillCircle(cx, cy, r, color);
 }
 #endif
 
-// Layout: title, CO2 + T/RH (SCD41), countdown
+// Optimized layout: header, large CO2 + quality, T/RH row, countdown bar
 static void drawScreen(uint16_t co2, float tScd, float rhScd, int nextInSec) {
   gfx->fillScreen(RGB565_BLACK);
-  const int marginX = 10;
-  const int marginY = 10;
-  const int lineH = 16;
-  int y = marginY;
+  const int mx = 8;
+  const int w = gfx->width();
 
+  // Header: title left, connection right (text size 3)
   gfx->setTextColor(RGB565_WHITE, RGB565_BLACK);
   gfx->setTextSize(3);
-  gfx->setCursor(marginX, y);
-  gfx->println(F("CO2 Monitor"));
-  y += 24;
-
+  gfx->setCursor(mx, 4);
+  gfx->print(F("CO2 Monitor"));
 #if ENABLE_MQTT
   drawConnectionIndicator(WiFi.status() == WL_CONNECTED, mqtt.connected());
 #endif
 
-  gfx->setTextSize(2);
-  if (hasScd41) {
-    gfx->setTextColor(RGB565_CYAN, RGB565_BLACK);
-    gfx->setCursor(marginX, y);
-    gfx->print(F("CO2: "));
-    gfx->print(co2);
-    gfx->println(F(" ppm"));
-    y += lineH;
-    gfx->setCursor(marginX, y);
-    gfx->print(F("T: "));
-    gfx->print(tScd, 1);
-    gfx->print(F(" °C  RH: "));
-    gfx->print(rhScd, 1);
-    gfx->println(F(" %"));
+  if (!hasScd41) {
+    drawCountdown(nextInSec, MEASURE_INTERVAL_SEC);
+    return;
   }
 
-  drawCountdown(nextInSec);
+  // Main: very large CO2 value (text size 5)
+  gfx->setTextSize(5);
+  gfx->setTextColor(RGB565_CYAN, RGB565_BLACK);
+  int xCo2 = mx;
+  int yCo2 = 38;
+  gfx->setCursor(xCo2, yCo2);
+  gfx->print(co2);
+  gfx->setTextSize(3);
+  gfx->setTextColor(RGB565_WHITE, RGB565_BLACK);
+  gfx->print(F(" ppm"));
+
+  // Quality label with color dot (text size 3); clear full row so "Unhealthy" fits
+  const char* qLabel;
+  uint16_t qColor;
+  getCo2Quality(co2, qLabel, qColor);
+  const int yQuality = yCo2 + 52;
+  const int lineH = 24;
+  gfx->fillRect(0, yQuality, w, lineH, RGB565_BLACK);
+  gfx->fillRect(xCo2, yQuality + 4, 10, 10, qColor);
+  gfx->setCursor(xCo2 + 14, yQuality + 2);
+  gfx->setTextColor(RGB565_WHITE, RGB565_BLACK);
+  gfx->setTextSize(3);
+  gfx->print(qLabel);
+
+  // T and RH: one row, text size 3; fixed columns so they don't overlap
+  const int yTrh = yQuality + lineH + 4;
+  gfx->fillRect(0, yTrh, w, lineH, RGB565_BLACK);
+  gfx->setTextSize(3);
+  gfx->setTextColor((uint16_t)0xAD55, RGB565_BLACK);  /* temp tint */
+  gfx->setCursor(mx, yTrh + 2);
+  gfx->print(F("T "));
+  gfx->print(tScd, 1);
+  gfx->print(F(" C"));
+  gfx->setTextColor((uint16_t)0x07FF, RGB565_BLACK);  /* cyan for RH */
+  gfx->setCursor((w / 2) + 2, yTrh + 2);
+  gfx->print(F("RH "));
+  gfx->print(rhScd, 1);
+  gfx->print(F(" %"));
+
+  drawCountdown(nextInSec, MEASURE_INTERVAL_SEC);
 }
 
 void setup() {
@@ -308,6 +352,30 @@ void setup() {
 
 #if ENABLE_MQTT
   snprintf(mqttStateTopic, sizeof(mqttStateTopic), "%s/state", MQTT_DEVICE_ID);
+#endif
+
+#if ENABLE_OTA && ENABLE_MQTT
+  wifiConnect();
+  if (WiFi.status() == WL_CONNECTED) {
+    ArduinoOTA.setHostname(OTA_HOSTNAME);
+    if (strlen(OTA_PASSWORD) > 0)
+      ArduinoOTA.setPassword(OTA_PASSWORD);
+    ArduinoOTA.onStart([]() {
+      Serial.println(F("OTA: Start"));
+    });
+    ArduinoOTA.onEnd([]() {
+      Serial.println(F("\nOTA: End"));
+    });
+    ArduinoOTA.onProgress([](unsigned int done, unsigned int total) {
+      Serial.printf("OTA: %u%%\r", (done * 100) / total);
+    });
+    ArduinoOTA.onError([](ota_error_t err) {
+      Serial.printf("OTA Error %u\n", (unsigned)err);
+    });
+    ArduinoOTA.begin();
+    Serial.print(F("OTA: "));
+    Serial.println(WiFi.localIP());
+  }
 #endif
 
   i2cBusRecovery();
@@ -425,16 +493,25 @@ void loop() {
     mqttConnect();
     mqttPublishState(co2, tScd, rhScd);
 #endif
+#if ENABLE_OTA
+    ArduinoOTA.handle();
+#endif
     drawScreen(co2, tScd, rhScd, MEASURE_INTERVAL_SEC);
     for (int s = MEASURE_INTERVAL_SEC - 1; s >= 0; s--) {
 #if ENABLE_MQTT
       mqtt.loop();
       drawConnectionIndicator(WiFi.status() == WL_CONNECTED, mqtt.connected());
 #endif
-      drawCountdown(s);
+#if ENABLE_OTA
+      ArduinoOTA.handle();
+#endif
+      drawCountdown(s, MEASURE_INTERVAL_SEC);
       delay(1000);
     }
   } else {
+#if ENABLE_OTA
+    ArduinoOTA.handle();
+#endif
     delay(5000);
   }
 }

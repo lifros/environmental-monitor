@@ -84,7 +84,7 @@ So: **offset = (sensor reading − reference) + previous_offset**. The chip then
 7. **set_temperature_offset(7.0)** (in **idle** mode: after **stop_periodic_measurement**, wait 500 ms; then set offset; then **start_periodic_measurement**).
 8. (Optional) **persist_settings** so the offset survives power cycles (EEPROM limited to ~2000 writes).
 
-In this project, `config.h` defines **SCD41_TEMP_OFFSET_C** (e.g. 2.5f). That value is the “sensor reads this much above ambient”; the firmware calls **setTemperatureOffset(SCD41_TEMP_OFFSET_C)** once at startup. Tune it (e.g. 2.0–4.0) by comparing SCD41 T with a reference; the chip will then report lower T and adjusted RH automatically.
+In this project, `config.h` defines **SCD41_TEMP_OFFSET_C** (e.g. 3.0f). That value is the “sensor reads this much above ambient”; the firmware calls **setTemperatureOffset(SCD41_TEMP_OFFSET_C)** once at startup. Tune it (e.g. 2.0–4.0) by comparing SCD41 T with a reference; the chip will then report lower T and adjusted RH automatically.
 
 ---
 
@@ -180,3 +180,18 @@ CO2 accuracy depends on ambient pressure. The SCD4x supports two options (use on
 6. **persist_settings**: Use sparingly (≤2000 times) after changing offset/altitude/ASC.
 7. **Mode**: High-performance (5 s) for best responsiveness; low-power (30 s) to save power; single-shot for lowest power (SCD41 only).
 8. **Design-in**: Place sensor away from heat; stable, low-ripple supply.
+
+---
+
+## 12. Best-practice checklist (this project)
+
+| Item | Sensirion recommendation | This project |
+|------|---------------------------|--------------|
+| Config in idle | Set offset, altitude, ASC only when sensor is idle (after stop, 500 ms). | ✓ `stopPeriodicMeasurement()` → 500 ms → set offset/altitude → optional persist → 500 ms → start. |
+| Temperature offset | 0–20 °C; use Equation 1 with reference T. | ✓ `SCD41_TEMP_OFFSET_C` in config; tune per installation. |
+| Read flow | Use `get_data_ready_status` before `read_measurement` to avoid NACK. | ✓ Poll `getDataReadyStatus()` then `readMeasurement()`. |
+| Invalid output | Treat T ≈ -45 °C, RH = 100 % as not-ready. | ✓ `scd41Valid()` rejects sentinel and enforces T -10..60 °C, RH 0..100 %. |
+| ASC | Leave enabled if sensor sees ~400 ppm weekly. | ✓ ASC left at default (enabled). |
+| Persist | Only when config must survive power cycle; EEPROM ≤2000 writes. | ✓ Optional `SCD41_PERSIST_SETTINGS`; default 0. |
+| Altitude | Set once if not at sea level (0–3000 m). | ✓ Optional `SCD41_SENSOR_ALTITUDE_M`; 0 = not set. |
+| Supply | LDO, ripple ≤30 mV; peak current ~205 mA. | Hardware; not enforced in firmware. |
