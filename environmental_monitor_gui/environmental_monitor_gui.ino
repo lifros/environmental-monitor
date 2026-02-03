@@ -301,7 +301,7 @@ static void drawScreen(uint16_t co2, float tScd, float rhScd, int nextInSec) {
   const char* qLabel;
   uint16_t qColor;
   getCo2Quality(co2, qLabel, qColor);
-  const int yQuality = yCo2 + 52;
+  const int yQuality = yCo2 + 44;
   const int lineH = 24;
   gfx->fillRect(0, yQuality, w, lineH, RGB565_BLACK);
   gfx->fillRect(xCo2, yQuality + 4, 10, 10, qColor);
