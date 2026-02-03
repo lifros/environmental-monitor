@@ -310,19 +310,17 @@ static void drawScreen(uint16_t co2, float tScd, float rhScd, int nextInSec) {
   gfx->setTextSize(3);
   gfx->print(qLabel);
 
-  // T and RH: one row, text size 3; fixed columns so they don't overlap
+  // T and RH: one row, text size 2; format "T 22.0 C - RH 66.0 %"
   const int yTrh = yQuality + lineH + 4;
-  gfx->fillRect(0, yTrh, w, lineH, RGB565_BLACK);
-  gfx->setTextSize(3);
-  gfx->setTextColor((uint16_t)0xAD55, RGB565_BLACK);  /* temp tint */
+  const int trhLineH = 18;
+  gfx->fillRect(0, yTrh, w, trhLineH, RGB565_BLACK);
+  gfx->setTextSize(2);
+  gfx->setTextColor((uint16_t)0xAD55, RGB565_BLACK);
   gfx->setCursor(mx, yTrh + 2);
   gfx->print(F("T "));
   gfx->print(tScd, 1);
-  gfx->print(F(" C"));
-  gfx->setTextColor((uint16_t)0x07FF, RGB565_BLACK);  /* cyan for RH */
-  const int rhX = (w / 2) + 2;
-  gfx->fillCircle(rhX + 6, yTrh + 4 + 6, 6, (uint16_t)0x07FF);  /* small circle = humidity indicator */
-  gfx->setCursor(rhX + 16, yTrh + 2);
+  gfx->print(F(" C - "));
+  gfx->setTextColor((uint16_t)0x07FF, RGB565_BLACK);
   gfx->print(F("RH "));
   gfx->print(rhScd, 1);
   gfx->print(F(" %"));
