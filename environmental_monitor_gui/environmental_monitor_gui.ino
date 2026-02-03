@@ -320,7 +320,9 @@ static void drawScreen(uint16_t co2, float tScd, float rhScd, int nextInSec) {
   gfx->print(tScd, 1);
   gfx->print(F(" C"));
   gfx->setTextColor((uint16_t)0x07FF, RGB565_BLACK);  /* cyan for RH */
-  gfx->setCursor((w / 2) + 2, yTrh + 2);
+  const int rhX = (w / 2) + 2;
+  gfx->fillCircle(rhX + 6, yTrh + 4 + 6, 6, (uint16_t)0x07FF);  /* small circle = humidity indicator */
+  gfx->setCursor(rhX + 16, yTrh + 2);
   gfx->print(F("RH "));
   gfx->print(rhScd, 1);
   gfx->print(F(" %"));
