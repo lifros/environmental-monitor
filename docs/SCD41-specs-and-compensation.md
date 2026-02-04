@@ -108,7 +108,26 @@ Invalid or not-ready data often appear as **T = -45 °C**, **RH = 100 %** (raw 0
 
 ---
 
-## 6. Pressure and altitude compensation (Section 3.7.3–3.7.6)
+## 6. Response time and reading interval
+
+### CO2 response time (τ63% = 60 s)
+
+The **response time** of 60 seconds (τ63%) means: after a step change in CO2 concentration (e.g., 400 → 2000 ppm), the sensor takes **~60 seconds to reach 63% of the final value**. To reach **95%** of the final value, approximately **3×τ63% ≈ 180 seconds** are needed.
+
+**Implications for reading frequency:**
+
+- **Internal update**: The sensor updates its internal measurement every **5 seconds** (periodic mode) or **~30 seconds** (low-power mode), but the **output value changes gradually** toward the new concentration.
+- **Reading interval**: Reading every **60 seconds** (as in this project with `MEASURE_INTERVAL_SEC 60`) is **appropriate** because:
+  - It matches the sensor’s response time (τ63%).
+  - Reading more frequently (e.g., every 5 s) would show intermediate values that are still converging, not the stabilized reading.
+  - Reading less frequently (e.g., every 180 s) would miss short-term changes but capture fully stabilized values.
+- **For monitoring**: A 60-second interval provides a good balance: you see meaningful changes without excessive intermediate readings. For faster response to sudden changes, consider reading every 30–40 seconds, but expect gradual transitions.
+
+**Note**: The response time depends on airflow, sensor placement, and the magnitude of the change. The 60 s value is typical for a step change 400→2000 ppm under standard conditions.
+
+---
+
+## 7. Pressure and altitude compensation (Section 3.7.3–3.7.6)
 
 CO2 accuracy depends on ambient pressure. The SCD4x supports two options (use one; ambient pressure overrides altitude if both are set):
 
@@ -121,7 +140,7 @@ CO2 accuracy depends on ambient pressure. The SCD4x supports two options (use on
 
 ---
 
-## 7. Field calibration: ASC and FRC (Section 3.8)
+## 8. Field calibration: ASC and FRC (Section 3.8)
 
 ### Automatic Self-Calibration (ASC)
 
@@ -143,7 +162,7 @@ CO2 accuracy depends on ambient pressure. The SCD4x supports two options (use on
 
 ---
 
-## 8. Persist settings (Section 3.10.1)
+## 9. Persist settings (Section 3.10.1)
 
 - Temperature offset, sensor altitude, ASC enabled/target are stored in **RAM** by default and lost at power cycle.
 - **persist_settings** writes current configuration to **EEPROM** (max **2000** write cycles). Call only when you actually change settings and want them to survive power loss.
@@ -151,7 +170,7 @@ CO2 accuracy depends on ambient pressure. The SCD4x supports two options (use on
 
 ---
 
-## 9. Measurement modes
+## 10. Measurement modes
 
 | Mode | Command | Interval | Current (typ. 3.3 V) | Use case |
 |------|---------|----------|----------------------|----------|
@@ -163,14 +182,14 @@ CO2 accuracy depends on ambient pressure. The SCD4x supports two options (use on
 
 ---
 
-## 10. Power supply (Section 2.3)
+## 11. Power supply (Section 2.3)
 
 - **LDO** for the sensor is recommended; supply ripple (without sensor load) ≤ **30 mV** peak-to-peak.
 - **Peak current**: up to ~205 mA @ 3.3 V during measurement; ensure the supply can deliver it without droop.
 
 ---
 
-## 11. Summary: getting the best from the SCD41
+## 12. Summary: getting the best from the SCD41
 
 1. **Temperature offset**: Set in final design under thermal equilibrium; use formula in Section 3; optionally persist.
 2. **Altitude**: Set once if not at sea level (0–3000 m); optionally persist.
@@ -183,7 +202,7 @@ CO2 accuracy depends on ambient pressure. The SCD4x supports two options (use on
 
 ---
 
-## 12. Best-practice checklist (this project)
+## 13. Best-practice checklist (this project)
 
 | Item | Sensirion recommendation | This project |
 |------|---------------------------|--------------|
