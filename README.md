@@ -42,7 +42,24 @@ This project focuses on **CO2** (ppm) from the Sensirion SCD41. The SCD41 also p
 6. **Tools → Serial Monitor** at 115200 baud to see sensor output.
 7. Connect SCD41 to the board I²C (SDA, SCL) and 3V3/GND. If the sensor is not found, check I²C pins in `config.h` against the board schematic.
 
-**OTA (Over-The-Air)**: With WiFi and MQTT enabled, set `ENABLE_OTA 1` in `config.h`. After the first USB upload, the device appears in **Tools → Port** as *envmon_gui at 192.168.x.x*. Select that port and upload to update firmware without USB.
+**OTA (Over-The-Air)**: With WiFi and MQTT enabled, set `ENABLE_OTA 1` in `config.h`. After the first USB upload:
+
+**Option A: Arduino IDE with mDNS** (if available):
+1. **Find the device IP**: Open **Serial Monitor** (115200 baud) and look for `OTA ready at 192.168.x.x` after WiFi connects.
+2. **Enable mDNS**: Install **Bonjour Print Services** (Windows) or **Avahi** (Linux) so Arduino IDE can discover the device.
+3. In Arduino IDE: **Tools → Port** → **Network Ports** → `envmon_gui at 192.168.x.x` should appear.
+4. Click **Upload**; firmware is sent over WiFi.
+
+**Option B: Install Bonjour/mDNS** (recommended):
+- **Windows**: Download and install [Bonjour Print Services](https://support.apple.com/kb/DL999) from Apple.
+- **Linux**: Install `avahi-daemon`: `sudo apt-get install avahi-daemon` (Ubuntu/Debian) or equivalent.
+- **macOS**: Bonjour is built-in.
+- After installation, restart Arduino IDE; the device should appear in **Tools → Port → Network Ports**.
+
+**Option C: PlatformIO** (OTA by IP) — *not available for ESP32-C6 yet*:  
+The `environmental_monitor_gui_pio/` folder contains a PlatformIO version of the sketch. As of 2025, the PlatformIO espressif32 platform **does not support the Arduino framework for ESP32-C6**, so the project does not build. Use **Option B (Bonjour)** with Arduino IDE for OTA until PlatformIO adds support.
+
+**Note**: Arduino IDE's OTA port selection requires mDNS/Bonjour. Install Bonjour (Option B) for OTA with this board.
 
 ## I2C addresses (verified with project scanner)
 
@@ -61,7 +78,8 @@ With only the board: 2 devices (0x63, 0x6B). With SCD41 on the expansion header:
 - `README.md` — this file
 - `PINOUT.md` — board pinout
 - `docs/SCD41-specs-and-compensation.md` — SCD41 specs and T/RH compensation procedure
-- `environmental_monitor_gui/` — SCD41 + LCD (172×320), optional WiFi+MQTT; `config.h` has I²C, TFT, and MQTT settings
+- `environmental_monitor_gui/` — SCD41 + LCD (Arduino IDE), optional WiFi+MQTT; `config.h` has I²C, TFT, MQTT, OTA
+- `environmental_monitor_gui_pio/` — Same app as PlatformIO project; OTA upload by IP (no mDNS). See folder README
 - `i2c_scanner/` — I2C bus scanner sketch
 - `docs/HA-integration.md` — Home Assistant via WiFi+MQTT
 

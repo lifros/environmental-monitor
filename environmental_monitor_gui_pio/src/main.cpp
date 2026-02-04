@@ -2,7 +2,9 @@
  * Environmental monitor — SCD41 CO2 + T/RH with LCD (172×320).
  * Serial output + display. Optional WiFi + MQTT for Home Assistant.
  * Config in config.h. Display: Arduino_GFX_Library with official board init sequence.
+ * PlatformIO project: OTA upload via env "ota" with upload_port = device IP.
  */
+#include <Arduino.h>
 #include <Wire.h>
 #include <SensirionI2cScd4x.h>
 #include <Arduino_GFX_Library.h>
@@ -235,7 +237,6 @@ static void drawCountdown(int secondsLeft, int totalSec) {
   const int y0 = gfx->height() - h;
   const int w = gfx->width();
   gfx->fillRect(0, y0, w, h, RGB565_BLACK);
-  // Progress bar: filled portion = (totalSec - secondsLeft) / totalSec
   if (totalSec > 0) {
     const int barW = w - 4;
     const int filled = (int)((long)(totalSec - secondsLeft) * barW / totalSec);
@@ -251,7 +252,6 @@ static void drawCountdown(int secondsLeft, int totalSec) {
 }
 
 #if ENABLE_MQTT
-// WiFi/MQTT status: top-right. Green = both, yellow = WiFi only, gray = off.
 static void drawConnectionIndicator(bool wifiOk, bool mqttOk) {
   const int boxW = 22;
   const int boxH = 22;
@@ -266,13 +266,11 @@ static void drawConnectionIndicator(bool wifiOk, bool mqttOk) {
 }
 #endif
 
-// Optimized layout: header, large CO2 + quality, T/RH row, countdown bar
 static void drawScreen(uint16_t co2, float tScd, float rhScd, int nextInSec) {
   gfx->fillScreen(RGB565_BLACK);
   const int mx = 8;
   const int w = gfx->width();
 
-  // Header: title left, connection right (text size 3)
   gfx->setTextColor(RGB565_WHITE, RGB565_BLACK);
   gfx->setTextSize(3);
   gfx->setCursor(mx, 4);
@@ -286,7 +284,6 @@ static void drawScreen(uint16_t co2, float tScd, float rhScd, int nextInSec) {
     return;
   }
 
-  // Main: very large CO2 value (text size 5)
   gfx->setTextSize(5);
   gfx->setTextColor(RGB565_CYAN, RGB565_BLACK);
   int xCo2 = mx;
@@ -297,7 +294,6 @@ static void drawScreen(uint16_t co2, float tScd, float rhScd, int nextInSec) {
   gfx->setTextColor(RGB565_WHITE, RGB565_BLACK);
   gfx->print(F(" ppm"));
 
-  // Quality label with color dot (text size 3); clear full row so "Unhealthy" fits
   const char* qLabel;
   uint16_t qColor;
   getCo2Quality(co2, qLabel, qColor);
@@ -310,7 +306,6 @@ static void drawScreen(uint16_t co2, float tScd, float rhScd, int nextInSec) {
   gfx->setTextSize(3);
   gfx->print(qLabel);
 
-  // T and RH: one row, text size 2; format "T 22.0 C - RH 66.0 %"
   const int yTrh = yQuality + lineH + 4;
   const int trhLineH = 18;
   gfx->fillRect(0, yTrh, w, trhLineH, RGB565_BLACK);
@@ -406,7 +401,6 @@ void setup() {
     Serial.print(F("SCD41: found 0x"));
     Serial.println(serialNumber, HEX);
     delay(100);
-    // Self-heating compensation (chip recalculates T and RH)
     if (scd41.setTemperatureOffset(SCD41_TEMP_OFFSET_C) == 0) {
       Serial.print(F("SCD41: temp offset "));
       Serial.print(SCD41_TEMP_OFFSET_C);
@@ -422,10 +416,10 @@ void setup() {
 #if SCD41_PERSIST_SETTINGS
     if (scd41.persistSettings() == 0) {
       Serial.println(F("SCD41: settings persisted"));
-      delay(800);  // persist_settings duration per datasheet
+      delay(800);
     }
 #endif
-    delay(500);  // let sensor accept config before starting measurement
+    delay(500);
 #if SCD41_LOW_POWER_PERIODIC
     if (scd41.startLowPowerPeriodicMeasurement() == 0) {
       hasScd41 = true;
@@ -440,10 +434,8 @@ void setup() {
   }
 }
 
-// SCD41 valid range per Sensirion datasheet Table 2 & 3: T -10..60 °C, RH 0..100%;
-// invalid/not-ready often reported as T = -45 °C, RH = 100 % (raw 0 / 0xFFFF)
 static bool scd41Valid(float tC, float rh) {
-  if (tC <= -44.0f && tC >= -46.0f && rh >= 99.5f) return false;  // sentinel
+  if (tC <= -44.0f && tC >= -46.0f && rh >= 99.5f) return false;
   return (tC >= -10.0f && tC <= 60.0f && rh >= 0.0f && rh <= 100.0f);
 }
 
@@ -465,7 +457,6 @@ void loop() {
       delay(1000);
       return;
     }
-    // read_measurement: CO2 [ppm], T [°C], RH [%] per datasheet Table 11
     if (scd41.readMeasurement(co2, tScd, rhScd) != 0) {
       Serial.println(F("SCD41: read error"));
       delay(5000);
